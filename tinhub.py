@@ -10,7 +10,7 @@ import re
 USER_ID = "312148668"       
 GAME_TARGET = "90148635862803" 
 CHECK_INTERVAL = 60         
-USE_ROOT = True             # Bật chế độ tối ưu bằng ROOT
+USE_ROOT = True             
 # ===================================================
 
 headers = {
@@ -32,14 +32,10 @@ def show_banner():
     print("==================================================")
 
 def optimize_system_root():
-    """Tận dụng quyền ROOT để dọn dẹp bộ nhớ, ưu tiên tài nguyên cho Roblox"""
     if not USE_ROOT: return
     print("[+] ROOT: Đang dọn dẹp bộ nhớ đệm (Cache RAM) để giảm lag...")
-    # Giải phóng RAM trống cho máy yếu
     os.system("su -c 'echo 3 > /proc/sys/vm/drop_caches'")
-    # Ép hệ thống không kill Termux ngầm
     os.system("su -c 'echo -17 > /proc/self/oom_adj'")
-    # Buộc đóng các ứng dụng rác chạy ngầm trừ Roblox và Termux
     os.system("su -c 'am kill-all'")
 
 def is_user_in_this_game(user_id):
@@ -50,9 +46,8 @@ def is_user_in_this_game(user_id):
             data = res.json()['userPresences'][0]
             return data['userPresenceType'] == 2
         return True
-    except (requests.exceptions.RequestException, Exception):
-        # FIX LỖI MẤT KẾT NỐI: Nếu rớt mạng hoặc Cloud lag, coi như vẫn trong game để không spam mở app vô ích
-        print(f" [!] {time.strftime('%H:%M:%S')} | Mạng lag/Mất kết nối API. Đang bỏ qua lượt check này...")
+    except:
+        print(f" [!] {time.strftime('%H:%M:%S')} | Mạng lag/Mất kết nối API. Đang bỏ qua lượt check...")
         return True
 
 def launch_game():
@@ -65,8 +60,7 @@ def launch_game():
         deeplink = f"roblox://placeId={GAME_TARGET}"
         
     if USE_ROOT:
-        print("\n[+] ROOT: Sử dụng đặc quyền su để ép mở Roblox load map trực tiếp...")
-        # Lệnh Root mở deeplink bỏ qua mọi lớp chặn của Android 10/Cloud Phone
+        print("\n[+] ROOT: Sử dụng đặc quyền su để ép mở tương thích Android 10...")
         os.system(f"su -c 'am start -a android.intent.action.VIEW -d \"{deeplink}\"'")
     else:
         print("\n[!] Không ROOT: Mở app bằng quyền thường...")
@@ -89,10 +83,9 @@ def run_rejoin():
             in_game = is_user_in_this_game(USER_ID)
             if not in_game:
                 launch_game()
-                # Máy yếu/Cloud cần thời gian load lâu hơn, tăng lên 100 giây cho an toàn
                 print(f" [~] {time.strftime('%H:%M:%S')} | Đang đợi 100 giây cho máy yếu load game...")
                 time.sleep(100)
-                if USE_ROOT: optimize_system_root() # Dọn dẹp RAM sau khi mở game xong
+                if USE_ROOT: optimize_system_root()
             else:
                 random_delay = CHECK_INTERVAL + random.randint(1, 4)
                 print(f" [✓] {time.strftime('%H:%M:%S')} | Trạng thái: Trong game (Xanh lá). Kiểm tra lại sau {random_delay}s")
@@ -115,7 +108,6 @@ def main():
         choice = input(" -> Chọn chế độ (0-3): ").strip()
         
         if choice == "1":
-            from_menu = True
             clear_screen()
             show_banner()
             global USER_ID, GAME_TARGET, CHECK_INTERVAL
