@@ -1,4 +1,3 @@
-cat << 'EOF' > tinhub.py
 import time
 import os
 import random
@@ -128,4 +127,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-EOF
