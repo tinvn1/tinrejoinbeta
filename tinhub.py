@@ -1,129 +1,90 @@
-import time
 import os
-import random
+import time
 import requests
-import sys
-import re
 
-# ================= CONFIG MẶC ĐỊNH =================
-USER_ID = "312148668"       
-GAME_TARGET = "90148635862803" 
-CHECK_INTERVAL = 60         
-USE_ROOT = True             
-# ===================================================
+# === CẤU HÌNH THÔNG SỐ CHUẨN CỦA BẠN ===
+USER_ID = 312148668             # ID Profile cần check
+PLACE_ID = "90148635862803"     # ID Game chuẩn 14 chữ số (Survive the Apocalypse)
+VIP_LINK = "https://www.roblox.com/share?code=4c2ac37f96906a4892f37026c4502184&type=Server"
 
-headers = {
-    "User-Agent": "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36"
+STATUS_MAP = {
+    0: "OFFLINE 🔴",
+    1: "ONLINE (Chỉ lướt Web) 🌐",
+    2: "IN-GAME (Đang chơi game) 🎮",
+    3: "IN STUDIO 🛠️"
 }
 
-def clear_screen():
-    os.system('clear')
-
-def show_banner():
-    print("==================================================")
-    print("      ████████╗██╗███╗   ██╗██╗  ██╗██╗   ██╗██████╗ ")
-    print("      ╚══██╔══╝██║████╗  ██║██║  ██║██║   ██║██╔══██╗")
-    print("         ██║   ██║██╔██╗ ██║███████║██║   ██║██████╔╝")
-    print("         ██║   ██║██║╚██╗██║██╔══██║██║   ██║██╔══██╗")
-    print("         ██║   ██║██║ ╚████║██║  ██║╚██████╔╝██████╔╝")
-    print("         ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ")
-    print("           [ TinHub - ROOT & CLOUD OPTIMIZED ]      ")
-    print("==================================================")
-
-def optimize_system_root():
-    if not USE_ROOT: return
-    print("[+] ROOT: Đang dọn dẹp bộ nhớ đệm (Cache RAM) để giảm lag...")
-    os.system("su -c 'echo 3 > /proc/sys/vm/drop_caches'")
-    os.system("su -c 'echo -17 > /proc/self/oom_adj'")
-    os.system("su -c 'am kill-all'")
-
-def is_user_in_this_game(user_id):
-    url_presence = "https://presence.roblox.com/v1/presence/users"
+def check_roblox_presence(user_id):
+    url = "https://presence.roblox.com/v1/presence/users"
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    payload = {"userIds": [user_id]}
     try:
-        res = requests.post(url_presence, json={"userIds": [int(user_id)]}, headers=headers, timeout=15)
-        if res.status_code == 200:
-            data = res.json()['userPresences'][0]
-            return data['userPresenceType'] == 2
-        return True
+        response = requests.post(url, json=payload, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            if data and "userPresences" in data and len(data["userPresences"]) > 0:
+                return data["userPresences"][0].get("userPresenceType", 0)
     except:
-        print(f" [!] {time.strftime('%H:%M:%S')} | Mạng lag/Mất kết nối API. Đang bỏ qua lượt check...")
-        return True
+        pass
+    return 0 
 
-def launch_game():
-    vip_mode = "roblox.com" in GAME_TARGET or "code=" in GAME_TARGET
-    if vip_mode:
-        match = re.search(r'code=([^&]+)', GAME_TARGET)
-        vip_code = match.group(1) if match else GAME_TARGET
-        deeplink = f"roblox://navigation/shareLinks?code={vip_code}&type=Server"
-    else:
-        deeplink = f"roblox://placeId={GAME_TARGET}"
-        
-    if USE_ROOT:
-        print("\n[+] ROOT: Sử dụng đặc quyền su để ép mở tương thích Android 10...")
-        os.system(f"su -c 'am start -a android.intent.action.VIEW -d \"{deeplink}\"'")
-    else:
-        print("\n[!] Không ROOT: Mở app bằng quyền thường...")
-        os.system(f"am start --user 0 -a android.intent.action.VIEW -d '{deeplink}'")
+def launch_roblox_vip(vip_url):
+    # Sử dụng lệnh mở link qua trình duyệt để kích hoạt app Roblox vào thẳng phòng VIP
+    os.system(f"am start -a android.intent.action.VIEW -d '{vip_url}'")
 
-def run_rejoin():
-    clear_screen()
-    show_banner()
-    if USE_ROOT:
-        optimize_system_root()
-        
-    mode_display = "SERVER VIP" if ("roblox.com" in GAME_TARGET or len(GAME_TARGET) > 20) else "MAP CÔNG KHAI"
-    print(f" [+] Tài khoản giám sát  : {USER_ID}")
-    print(f" [+] Chế độ vào game      : {mode_display}")
-    print(f" [+] ROOT Tối ưu hóa      : {'ĐÃ BẬT' if USE_ROOT else 'TẮT'}")
-    print(" --------------------------------------------------")
+def main():
+    print("="*50)
+    print("   TOOL SONG SONG: CHECK TRẠNG THÁI + ÉP REJOIN ĐỊNH KỲ   ")
+    print(f"   Target User ID: {USER_ID}")
+    print("="*50)
+    
+    check_interval = int(input("Nhập số giây giãn cách mỗi lần check (Ví dụ: 15): "))
+    force_interval = int(input("Sau bao nhiêu phút thì ÉP REJOIN 1 lần (Ví dụ: 60): "))
+    
+    # Quy đổi thời gian ép rejoin từ phút sang giây
+    force_timeout = force_interval * 60
+    start_time = time.time()
+    
+    print("\n[+] Tool đang chạy ngầm...")
+    print("="*50)
     
     while True:
         try:
-            in_game = is_user_in_this_game(USER_ID)
-            if not in_game:
-                launch_game()
-                print(f" [~] {time.strftime('%H:%M:%S')} | Đang đợi 100 giây cho máy yếu load game...")
-                time.sleep(100)
-                if USE_ROOT: optimize_system_root()
+            current_time_now = time.time()
+            elapsed_time = current_time_now - start_time
+            
+            # --- CƠ CHẾ 1: ÉP REJOIN BẮT BUỘC THEO ĐỊNH KỲ (Bất kể On hay Off) ---
+            if elapsed_time >= force_timeout:
+                print(f"\n[🔥] ĐÃ ĐẾN HẸN ÉP REJOIN ({force_interval} phút)! Bất kể có đang On hay không, tiến hành mở lại game...")
+                launch_roblox_vip(VIP_LINK)
+                print("[~] Đang chờ 45 giây cho game khởi động lại...")
+                time.sleep(45)
+                start_time = time.time() # Thiết lập lại mốc thời gian đếm ngược mới
+                continue
+                
+            # --- CƠ CHẾ 2: CHECK TRẠNG THÁI XANH LÁ (IN-GAME) LIÊN TỤC ---
+            status = check_roblox_presence(USER_ID)
+            status_text = STATUS_MAP.get(status, "KHÔNG RÕ")
+            time_str = time.strftime("%H:%M:%S", time.localtime())
+            
+            # Tính thời gian còn lại đến mốc Ép Rejoin bắt buộc tiếp theo
+            time_left = int(force_timeout - elapsed_time)
+            print(f"[{time_str}] Trạng thái: {status_text} | Tự động Ép Rejoin sau: {time_left}s")
+            
+            # Nếu phát hiện acc mất trạng thái In-Game 🎮 (Xanh lá tay cầm)
+            if status != 2:
+                print("[⚠️] Phát hiện acc không ở trong trận! Kích hoạt Rejoin vào Server VIP...")
+                launch_roblox_vip(VIP_LINK)
+                print("[~] Đang chờ 45 giây cho game ổn định...")
+                time.sleep(45)
+                # Lưu ý: Không reset start_time ở đây để giữ nguyên lịch hẹn ép Rejoin định kỳ của bạn
             else:
-                random_delay = CHECK_INTERVAL + random.randint(1, 4)
-                print(f" [✓] {time.strftime('%H:%M:%S')} | Trạng thái: Trong game (Xanh lá). Kiểm tra lại sau {random_delay}s")
-                time.sleep(random_delay)
+                # Nếu vẫn đang In-game mượt mà, tạm nghỉ theo số giây bạn cài rồi check tiếp
+                time.sleep(check_interval)
+                
         except KeyboardInterrupt:
-            print("\n[-] Đã dừng chạy Rejoin.")
-            input("Bấm Enter để quay lại Menu chính...")
+            print("\n[-] Đã dừng Tool thành công.")
             break
-
-def main():
-    global USE_ROOT
-    while True:
-        clear_screen()
-        show_banner()
-        print(" [1] Setup cấu hình ID / Link Server VIP")
-        print(f" [2] Kích hoạt chạy Auto Rejoin (ROOT: {'BẬT' if USE_ROOT else 'TẮT'})")
-        print(f" [3] Bật/Tắt chế độ ROOT (Hiện tại: {'ROOT' if USE_ROOT else 'THƯỜNG'})")
-        print(" [0] Thoát Tool TinHub")
-        print("==================================================")
-        choice = input(" -> Chọn chế độ (0-3): ").strip()
-        
-        if choice == "1":
-            clear_screen()
-            show_banner()
-            global USER_ID, GAME_TARGET, CHECK_INTERVAL
-            u = input(f" -> Nhập ID Roblox ({USER_ID}): ").strip()
-            if u: USER_ID = u
-            g = input(f" -> Nhập ID Map/Link VIP ({GAME_TARGET}): ").strip()
-            if g: GAME_TARGET = g
-            t = input(f" -> Chu kỳ quét ({CHECK_INTERVAL}s): ").strip()
-            if t: CHECK_INTERVAL = int(t)
-        elif choice == "2":
-            run_rejoin()
-        elif choice == "3":
-            USE_ROOT = not USE_ROOT
-            print(f"\n[+] Đã chuyển sang chế độ: {'ROOT' if USE_ROOT else 'THƯỜNG'}")
-            time.sleep(1)
-        elif choice == "0":
-            sys.exit()
 
 if __name__ == "__main__":
     main()
