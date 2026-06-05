@@ -2,8 +2,9 @@ import os
 import time
 import requests
 import json
+import sys
 
-# Đường dẫn lưu file cấu hình cố định tại thư mục Download của điện thoại
+# Đường dẫn lưu file cấu hình tại thư mục Download
 CONFIG_FILE = "/sdcard/Download/config_rejoin.json"
 
 STATUS_MAP = {
@@ -13,28 +14,39 @@ STATUS_MAP = {
     3: "IN STUDIO 🛠️"
 }
 
-def load_or_create_config():
-    # Kiểm tra xem đã có file cấu hình lưu trong mục Download chưa
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                config = json.load(f)
-                required_keys = ["user_id", "place_id", "vip_link", "check_interval", "force_interval"]
-                if all(key in config for key in required_keys):
-                    print("[⚙️] Đã tự động tải cấu hình cũ từ Download/config_rejoin.json")
-                    return config
-        except:
-            print("[⚠️] File cấu hình bị lỗi hoặc chưa đúng định dạng, tiến hành tạo mới...")
+def Banner():
+    os.system("clear")
+    # Hiển thị chữ TINHUB lớn nghệ thuật phong cách hacker cực đẹp
+    print("\033[1;36m")
+    print(" ████████╗██╗███╗   ██╗██╗  ██╗██╗   ██╗██████╗ ")
+    print(" ╚══██╔══╝██║████╗  ██║██║  ██║██║   ██║██╔══██╗")
+    print("    ██║   ██║██╔██╗ ██║███████║██║   ██║██████╔╝")
+    print("    ██║   ██║██║╚██╗██║██╔══██║██║   ██║██╔══██╗")
+    print("    ██║   ██║██║ ╚████║██║  ██║╚██████╔╝██████╔╝")
+    print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ")
+    print("\033[1;32m")
+    print("="*55)
+    print("        🚀 TINHUB REJOIN SYSTEM AUTOMATION 🚀       ")
+    print("="*55)
+    print("\033[0m")
 
-    # Giao diện nhập thông tin nếu chưa có file cấu hình lưu trữ
-    print("="*50)
-    print("   THIẾT LẬP CẤU HÌNH TOOL LẦN ĐẦU (SẼ LƯU VÀO DOWNLOAD)   ")
-    print("="*50)
-    user_id = int(input("1. Nhập ID Profile cần check (Ví dụ: 312148668): ").strip())
-    place_id = input("2. Nhập ID Game (Ví dụ: 90148635862803): ").strip()
-    vip_link = input("3. Dán Link Server VIP (https://www.roblox.com/share...): ").strip()
-    check_interval = int(input("4. Nhập số giây giãn cách mỗi lần check (Ví dụ: 15): ").strip())
-    force_interval = int(input("5. Sau bao nhiêu phút thì ÉP REJOIN 1 lần (Ví dụ: 60): ").strip())
+def setup_new_config():
+    Banner()
+    print("\033[1;33m[⚙️] KHỞI TẠO / SỬA CẤU HÌNH HỆ THỐNG\033[0m\n")
+    
+    try:
+        user_id = int(input("\033[1;32m[1] Nhập ID Profile cần check (Ví dụ: 312148668):\033[0m ").strip())
+        place_id = input("\033[1;32m[2] Nhập ID Game (Ví dụ: 90148635862803):\033[0m ").strip()
+        
+        print("\033[1;32m[3] Nhập Link Server VIP (Nếu dùng Server Thường, nhấn ENTER bỏ qua):\033[0m")
+        vip_link = input("    => Link: ").strip()
+        
+        check_interval = int(input("\033[1;32m[4] Nhập số giây giãn cách kiểm tra (Ví dụ: 15):\033[0m ").strip())
+        force_interval = int(input("\033[1;32m[5] Sau bao nhiêu phút thì ÉP REJOIN 1 lần (Ví dụ: 60):\033[0m ").strip())
+    except ValueError:
+        print("\n\033[1;31m[❌] Dữ liệu nhập sai định dạng! Vui lòng setup lại.\033[0m")
+        time.sleep(2)
+        return None
 
     config = {
         "user_id": user_id,
@@ -44,16 +56,23 @@ def load_or_create_config():
         "force_interval": force_interval
     }
 
-    # Tiến hành lưu file cấu hình thẳng ra mục Download của máy
     try:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=4, ensure_ascii=False)
-        print("[💾] Đã lưu trữ cấu hình thành công vào thư mục Download!")
+        print("\n\033[1;32m[💾] Đã lưu cấu hình an toàn vào thư mục Download!\033[0m")
     except Exception as e:
-        print(f"[❌] Không thể lưu file cấu hình do thiếu quyền bộ nhớ: {e}")
-        
-    print("="*50)
+        print(f"\n\033[1;31m[❌] Lỗi lưu file: {e}\033[0m")
+    
+    time.sleep(2)
     return config
+
+def delete_config():
+    if os.path.exists(CONFIG_FILE):
+        os.remove(CONFIG_FILE)
+        print("\n\033[1;32m[🗑️] Đã xóa file cấu hình cũ thành công!\033[0m")
+    else:
+        print("\n\033[1;33m[ℹ️] Không tìm thấy file cấu hình nào để xóa.\033[0m")
+    time.sleep(2)
 
 def check_roblox_presence(user_id):
     url = "https://presence.roblox.com/v1/presence/users"
@@ -69,69 +88,110 @@ def check_roblox_presence(user_id):
         pass
     return 0 
 
-def kill_and_launch_roblox(vip_url):
-    print("[💥] Đang tiến hành KILL ROBLOX (Tắt tận gốc ứng dụng chạy ngầm)...")
+def kill_and_launch_roblox(place_id, vip_url):
+    print("\n\033[1;31m[💥] Đang tiến hành KILL ROBLOX (Tắt ứng dụng ngầm)...\033[0m")
     os.system("am force-stop com.roblox.client")
     time.sleep(2) 
     
-    print("[🚀] Đang kích hoạt mở lại Server VIP...")
-    os.system(f"am start -a android.intent.action.VIEW -d '{vip_url}'")
+    if vip_url and vip_url.startswith("http"):
+        print("\033[1;34m[🚀] Đang kích hoạt mở Server VIP qua trình duyệt...\033[0m")
+        intent_url = vip_url
+    else:
+        print(f"\033[1;34m[🚀] Đang tự tạo lệnh mở thẳng vào Game ID: {place_id}...\033[0m")
+        intent_url = f"roblox://placeId={place_id}"
+        
+    os.system(f"am start -a android.intent.action.VIEW -d '{intent_url}'")
 
-def main():
-    config = load_or_create_config()
-    
+def run_tool(config):
+    Banner()
     USER_ID = config["user_id"]
+    PLACE_ID = config["place_id"]
     VIP_LINK = config["vip_link"]
     check_interval = config["check_interval"]
     force_interval = config["force_interval"]
 
-    print("\n" + "="*50)
-    print("   TOOL REJOIN: AUTO KILL ROBLOX + ÉP REJOIN ĐỊNH KỲ   ")
-    print(f"   Target User ID: {USER_ID}")
-    print(f"   Thời gian check: {check_interval}s | Ép Rejoin mỗi: {force_interval} phút")
-    print("   💡 Mẹo: Để đổi cấu hình mới, hãy xóa file config_rejoin.json trong mục Download đi nhé.")
-    print("="*50)
+    print("\033[1;35m[▶️] TOOL ĐANG HOẠT ĐỘNG NGẦM...\033[0m")
+    print(f"Target User ID: {USER_ID} | Game ID: {PLACE_ID}")
+    print(f"Chế độ sảnh: " + ("SERVER VIP 💎" if VIP_LINK else "SERVER THƯỜNG 🌐"))
+    print(f"Thời gian quét: {check_interval}s | Vòng lặp ép Rejoin: {force_interval} phút")
+    print("="*55)
     
     force_timeout = force_interval * 60
     start_time = time.time()
-    
-    print("\n[+] Tool đang chạy ngầm...")
-    print("="*50)
     
     while True:
         try:
             current_time_now = time.time()
             elapsed_time = current_time_now - start_time
             
-            # --- CƠ CHẾ 1: ÉP REJOIN BẮT BUỘC THEO ĐỊNH KỲ ---
+            # 1. ÉP REJOIN ĐỊNH KỲ BẤT KỂ TRẠNG THÁI
             if elapsed_time >= force_timeout:
-                print(f"\n[🔥] ĐÃ ĐẾN HẸN ÉP REJOIN ĐỊNH KỲ ({force_interval} phút)!")
-                kill_and_launch_roblox(VIP_LINK)
-                print("[~] Đang chờ 45 giây cho game khởi động lại...")
+                print(f"\n\033[1;33m[🔥] ĐÃ ĐẾN HẸN ÉP REJOIN ĐỊNH KỲ ({force_interval} phút)!\033[0m")
+                kill_and_launch_roblox(PLACE_ID, VIP_LINK)
+                print("[~] Chờ 45 giây sảnh khởi động xong...")
                 time.sleep(45)
                 start_time = time.time()
                 continue
                 
-            # --- CƠ CHẾ 2: CHECK TRẠNG THÁI IN-GAME LIÊN TỤC ---
+            # 2. KIỂM TRA TRẠNG THÁI ONLINE/IN-GAME
             status = check_roblox_presence(USER_ID)
             status_text = STATUS_MAP.get(status, "KHÔNG RÕ")
             time_str = time.strftime("%H:%M:%S", time.localtime())
-            
             time_left = int(force_timeout - elapsed_time)
-            print(f"[{time_str}] Trạng thái: {status_text} | Tự động Kill & Rejoin sau: {time_left}s")
             
-            # Nếu phát hiện acc mất trạng thái In-Game 🎮 (Xanh lá tay cầm)
+            print(f"[{time_str}] Status: {status_text} | Tự động Ép Rejoin sau: {time_left}s")
+            
             if status != 2:
-                print("[⚠️] Phát hiện acc văng trận/offline!")
-                kill_and_launch_roblox(VIP_LINK)
-                print("[~] Đang chờ 45 giây cho game load xong...")
+                print("\033[1;31m[⚠️] Phát hiện acc văng trận/offline!\033[0m")
+                kill_and_launch_roblox(PLACE_ID, VIP_LINK)
+                print("[~] Chờ 45 giây game load sảnh...")
                 time.sleep(45)
             else:
                 time.sleep(check_interval)
                 
         except KeyboardInterrupt:
-            print("\n[-] Đã dừng Tool thành công.")
+            print("\n\033[1;31m[-] Đã tạm dừng tool.\033[0m")
+            time.sleep(1.5)
             break
+
+def main():
+    while True:
+        Banner()
+        print("\033[1;32m[ MENU LỰA CHỌN SETTING ]\033[0m")
+        print(" \033[1;36m[1]\033[0m Khởi động Tool Rejoin (Chạy luôn)")
+        print(" \033[1;36m[2]\033[0m Cài đặt / Sửa thông số cấu hình Tool")
+        print(" \033[1;36m[3]\033[0m Xóa cấu hình hiện tại")
+        print(" \033[1;31m[0]\033[0m Thoát hệ thống")
+        print("="*55)
+        
+        choice = input("\033[1;33mNhập số để lựa chọn tác vụ (0-3): \033[0m").strip()
+        
+        if choice == "1":
+            if os.path.exists(CONFIG_FILE):
+                try:
+                    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                        config = json.load(f)
+                    run_tool(config)
+                except:
+                    print("\n\033[1;31m[❌] File config lỗi, vui lòng chọn [2] để cài đặt lại.\033[0m")
+                    time.sleep(2)
+            else:
+                print("\n\033[1;33m[ℹ️] Chưa có file cấu hình. Tự động chuyển qua mục Setup...\033[0m")
+                time.sleep(1.5)
+                config = setup_new_config()
+                if config:
+                    run_tool(config)
+                    
+        elif choice == "2":
+            setup_new_config()
+        elif choice == "3":
+            delete_config()
+        elif choice == "0":
+            print("\n👋 Cảm ơn bạn đã sử dụng TINHUB. Hẹn gặp lại!")
+            sys.exit()
+        else:
+            print("\n\033[1;31m[❌] Lựa chọn không hợp lệ, vui lòng chọn lại!\033[0m")
+            time.sleep(1)
 
 if __name__ == "__main__":
     main()
