@@ -1,11 +1,9 @@
 import os
 import time
 import requests
+import json
 
-# === CẤU HÌNH THÔNG SỐ CHUẨN CỦA BẠN ===
-USER_ID = 312148668             # ID Profile cần check
-PLACE_ID = "90148635862803"     # ID Game chuẩn 14 chữ số (Survive the Apocalypse)
-VIP_LINK = "https://www.roblox.com/share?code=4c2ac37f96906a4892f37026c4502184&type=Server"
+CONFIG_FILE = "config.json"
 
 STATUS_MAP = {
     0: "OFFLINE 🔴",
@@ -13,6 +11,43 @@ STATUS_MAP = {
     2: "IN-GAME (Đang chơi game) 🎮",
     3: "IN STUDIO 🛠️"
 }
+
+def load_or_create_config():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                # Kiểm tra xem có đủ các trường không
+                required_keys = ["user_id", "place_id", "vip_link", "check_interval", "force_interval"]
+                if all(key in config for key in required_keys):
+                    print("[⚙️] Đã tải cấu hình lưu sẵn từ config.json")
+                    return config
+        except:
+            print("[⚠️] File cấu hình bị lỗi, tiến hành tạo mới...")
+
+    # Giao diện nhập thông tin từ bên ngoài nếu chưa có file cấu hình
+    print("="*50)
+    print("   THIẾT LẬP CẤU HÌNH TOOL LẦN ĐẦU (SẼ LƯU LẠI)   ")
+    print("="*50)
+    user_id = int(input("1. Nhập ID Profile cần check (Ví dụ: 312148668): ").strip())
+    place_id = input("2. Nhập ID Game (Ví dụ: 90148635862803): ").strip()
+    vip_link = input("3. Dán Link Server VIP (https://www.roblox.com/share...): ").strip()
+    check_interval = int(input("4. Nhập số giây giãn cách mỗi lần check (Ví dụ: 15): ").strip())
+    force_interval = int(input("5. Sau bao nhiêu phút thì ÉP REJOIN 1 lần (Ví dụ: 60): ").strip())
+
+    config = {
+        "user_id": user_id,
+        "place_id": place_id,
+        "vip_link": vip_link,
+        "check_interval": check_interval,
+        "force_interval": force_interval
+    }
+
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=4, ensure_ascii=False)
+    print("[💾] Đã lưu cấu hình vào file config.json thành công!")
+    print("="*50)
+    return config
 
 def check_roblox_presence(user_id):
     url = "https://presence.roblox.com/v1/presence/users"
@@ -30,22 +65,26 @@ def check_roblox_presence(user_id):
 
 def kill_and_launch_roblox(vip_url):
     print("[💥] Đang tiến hành KILL ROBLOX (Tắt tận gốc ứng dụng chạy ngầm)...")
-    # Lệnh buộc dừng ứng dụng Roblox trên Android
     os.system("am force-stop com.roblox.client")
-    time.sleep(2) # Chờ 2 giây cho ứng dụng đóng hoàn toàn
+    time.sleep(2) 
     
     print("[🚀] Đang kích hoạt mở lại Server VIP...")
-    # Mở link qua trình duyệt để kích hoạt app vào thẳng phòng VIP
     os.system(f"am start -a android.intent.action.VIEW -d '{vip_url}'")
 
 def main():
-    print("="*50)
+    config = load_or_create_config()
+    
+    USER_ID = config["user_id"]
+    VIP_LINK = config["vip_link"]
+    check_interval = config["check_interval"]
+    force_interval = config["force_interval"]
+
+    print("\n" + "="*50)
     print("   TOOL REJOIN: AUTO KILL ROBLOX + ÉP REJOIN ĐỊNH KỲ   ")
     print(f"   Target User ID: {USER_ID}")
+    print(f"   Thời gian check: {check_interval}s | Ép Rejoin mỗi: {force_interval} phút")
+    print("   💡 Mẹo: Để sửa cấu hình, hãy xóa file config.json đi nhé.")
     print("="*50)
-    
-    check_interval = int(input("Nhập số giây giãn cách mỗi lần check (Ví dụ: 15): "))
-    force_interval = int(input("Sau bao nhiêu phút thì ÉP REJOIN 1 lần (Ví dụ: 60): "))
     
     force_timeout = force_interval * 60
     start_time = time.time()
