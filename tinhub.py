@@ -3,7 +3,8 @@ import time
 import requests
 import json
 
-CONFIG_FILE = "config.json"
+# Đường dẫn lưu file cấu hình cố định tại thư mục Download của điện thoại
+CONFIG_FILE = "/sdcard/Download/config_rejoin.json"
 
 STATUS_MAP = {
     0: "OFFLINE 🔴",
@@ -13,21 +14,21 @@ STATUS_MAP = {
 }
 
 def load_or_create_config():
+    # Kiểm tra xem đã có file cấu hình lưu trong mục Download chưa
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 config = json.load(f)
-                # Kiểm tra xem có đủ các trường không
                 required_keys = ["user_id", "place_id", "vip_link", "check_interval", "force_interval"]
                 if all(key in config for key in required_keys):
-                    print("[⚙️] Đã tải cấu hình lưu sẵn từ config.json")
+                    print("[⚙️] Đã tự động tải cấu hình cũ từ Download/config_rejoin.json")
                     return config
         except:
-            print("[⚠️] File cấu hình bị lỗi, tiến hành tạo mới...")
+            print("[⚠️] File cấu hình bị lỗi hoặc chưa đúng định dạng, tiến hành tạo mới...")
 
-    # Giao diện nhập thông tin từ bên ngoài nếu chưa có file cấu hình
+    # Giao diện nhập thông tin nếu chưa có file cấu hình lưu trữ
     print("="*50)
-    print("   THIẾT LẬP CẤU HÌNH TOOL LẦN ĐẦU (SẼ LƯU LẠI)   ")
+    print("   THIẾT LẬP CẤU HÌNH TOOL LẦN ĐẦU (SẼ LƯU VÀO DOWNLOAD)   ")
     print("="*50)
     user_id = int(input("1. Nhập ID Profile cần check (Ví dụ: 312148668): ").strip())
     place_id = input("2. Nhập ID Game (Ví dụ: 90148635862803): ").strip()
@@ -43,9 +44,14 @@ def load_or_create_config():
         "force_interval": force_interval
     }
 
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=4, ensure_ascii=False)
-    print("[💾] Đã lưu cấu hình vào file config.json thành công!")
+    # Tiến hành lưu file cấu hình thẳng ra mục Download của máy
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=4, ensure_ascii=False)
+        print("[💾] Đã lưu trữ cấu hình thành công vào thư mục Download!")
+    except Exception as e:
+        print(f"[❌] Không thể lưu file cấu hình do thiếu quyền bộ nhớ: {e}")
+        
     print("="*50)
     return config
 
@@ -83,7 +89,7 @@ def main():
     print("   TOOL REJOIN: AUTO KILL ROBLOX + ÉP REJOIN ĐỊNH KỲ   ")
     print(f"   Target User ID: {USER_ID}")
     print(f"   Thời gian check: {check_interval}s | Ép Rejoin mỗi: {force_interval} phút")
-    print("   💡 Mẹo: Để sửa cấu hình, hãy xóa file config.json đi nhé.")
+    print("   💡 Mẹo: Để đổi cấu hình mới, hãy xóa file config_rejoin.json trong mục Download đi nhé.")
     print("="*50)
     
     force_timeout = force_interval * 60
