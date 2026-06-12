@@ -25,7 +25,7 @@ def Banner():
     print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ")
     print("\033[1;32m")
     print("="*55)
-    print("   🚀 TINHUB REJOIN SYSTEM AUTOMATION (ROOT MODE) 🚀   ")
+    print("    🚀 TINHUB REJOIN SYSTEM AUTOMATION (ROOT + LINK DETECT) 🚀   ")
     print("="*55)
     print("\033[0m")
 
@@ -37,7 +37,7 @@ def setup_new_config():
         user_id = int(input("\033[1;32m[1] Nhập ID Profile cần check (Ví dụ: 312148668):\033[0m ").strip())
         place_id = input("\033[1;32m[2] Nhập ID Game (Ví dụ: 90148635862803):\033[0m ").strip()
         
-        print("\033[1;32m[3] Nhập Link Server VIP (Nhấn ENTER để bỏ qua vì đang dùng chế độ mở thường):\033[0m")
+        print("\033[1;32m[3] Nhập Link Server VIP (Nếu dùng Server Thường, nhấn ENTER bỏ qua):\033[0m")
         vip_link = input("    => Link: ").strip()
         
         check_interval = int(input("\033[1;32m[4] Nhập số giây giãn cách kiểm tra (Ví dụ: 15):\033[0m ").strip())
@@ -87,33 +87,43 @@ def check_roblox_presence(user_id):
         pass
     return 0 
 
-def kill_and_launch_roblox():
+def kill_and_launch_roblox(place_id, vip_url):
     print("\n\033[1;31m[🛡️/💥] ROOT: Đang thực hiện BUỘC DỪNG ứng dụng Roblox...\033[0m")
-    # Sử dụng lệnh su -c để mượn quyền Root tối cao ép đóng ứng dụng triệt để, khắc phục lỗi phân quyền
+    # Sử dụng quyền Root tối cao để ép đóng hoàn toàn ứng dụng chạy ngầm
     os.system("su -c 'am force-stop com.vng.roblox'")
     os.system("su -c 'am force-stop com.roblox.client'")
     time.sleep(2) 
     
-    print("\033[1;34m[🚀] Đang kích hoạt mở lại ứng dụng theo cách thông thường...\033[0m")
-    # Mở ứng dụng bình thường qua MainActivity bằng quyền thường (hoặc root để đảm bảo 100% thành công)
-    # Thử mở bản Roblox VN trước
-    launch_status = os.system("am start -n com.vng.roblox/com.roblox.client.MainActivity > /dev/null 2>&1")
+    # Thiết lập link điều hướng (Ưu tiên Link VIP, nếu không có sẽ thả link ID Game thường)
+    if vip_url and vip_url.startswith("http"):
+        print("\033[1;34m[🔗] Cơ chế cũ: Đang thả link điều hướng Server VIP...\033[0m")
+        intent_url = vip_url
+    else:
+        print(f"\033[1;34m[🔗] Cơ chế cũ: Đang thả link điều hướng vào thẳng Game ID: {place_id}...\033[0m")
+        intent_url = f"roblox://placeId={place_id}"
+        
+    # Kích hoạt cơ chế thả link bằng quyền Root để ép hệ thống gọi ứng dụng mở trực tiếp, bỏ qua bước chọn trình duyệt
+    # Ưu tiên thả link vào bản Roblox VN trước
+    print("\033[1;32m[🚀] Đang đẩy lệnh vào ứng dụng Roblox VN...\033[0m")
+    launch_status = os.system(f"su -c 'am start -p com.vng.roblox -a android.intent.action.VIEW -d \"{intent_url}\"' > /dev/null 2>&1")
     
-    # Nếu không tìm thấy hoặc lỗi bản VN, tự động gọi mở giao diện chính bản Quốc Tế
+    # Nếu máy không cài bản VN, tự động mượn Root đẩy link trực tiếp sang bản Quốc Tế
     if launch_status != 0:
-        print("\033[1;33m[ℹ️] Đang kiểm tra và khởi động ứng dụng bản Quốc Tế...\033[0m")
-        os.system("am start -n com.roblox.client/com.roblox.client.MainActivity > /dev/null 2>&1")
+        print("\033[1;33m[ℹ️] Không tìm thấy bản VNG, đang đẩy lệnh sang mở bản Quốc Tế...\033[0m")
+        os.system(f"su -c 'am start -p com.roblox.client -a android.intent.action.VIEW -d \"{intent_url}\"'")
 
 def run_tool(config):
     Banner()
     USER_ID = config["user_id"]
     PLACE_ID = config["place_id"]
+    VIP_LINK = config["vip_link"]
     check_interval = config["check_interval"]
     force_interval = config["force_interval"]
 
-    print("\033[1;35m[▶️] TOOL ĐANG HOẠT ĐỘNG NGẦM (CHẾ ĐỘ ROOT)...\033[0m")
+    print("\033[1;35m[▶️] TOOL ĐANG HOẠT ĐỘNG NGẦM TRÊN CƠ CHẾ CŨ...\033[0m")
     print(f"Target User ID: {USER_ID} | Game ID: {PLACE_ID}")
-    print("\033[1;32mCơ chế: BUỘC DỪNG BẰNG ROOT 🛡️  & MỞ APP THƯỜNG KHÔNG QUA WEB 📱\033[0m")
+    print(f"Chế độ sảnh: " + ("SERVER VIP 💎" if VIP_LINK else "SERVER THƯỜNG 🌐"))
+    print("\033[1;32mCơ chế: BUỘC DỪNG BẰNG ROOT 🛡️  & THẢ LINK INTENT VÀO THẲNG MAP 🔗\033[0m")
     print(f"Thời gian quét: {check_interval}s | Vòng lặp ép mở lại: {force_interval} phút")
     print("="*55)
     
@@ -128,8 +138,8 @@ def run_tool(config):
             # 1. ÉP REJOIN ĐỊNH KỲ BẤT KỂ TRẠNG THÁI
             if elapsed_time >= force_timeout:
                 print(f"\n\033[1;33m[🔥] ĐÃ ĐẾN HẸN ÉP REJOIN ĐỊNH KỲ ({force_interval} phút)!\033[0m")
-                kill_and_launch_roblox()
-                print("[~] Chờ 45 giây cho ứng dụng khởi động vào sảnh chính...")
+                kill_and_launch_roblox(PLACE_ID, VIP_LINK)
+                print("[~] Chờ 45 giây cho ứng dụng load link vào thẳng trận...")
                 time.sleep(45)
                 start_time = time.time()
                 continue
@@ -140,12 +150,12 @@ def run_tool(config):
             time_str = time.strftime("%H:%M:%S", time.localtime())
             time_left = int(force_timeout - elapsed_time)
             
-            print(f"[{time_str}] Status: {status_text} | Tự động Buộc dừng & Rejoin sau: {time_left}s")
+            print(f"[{time_str}] Status: {status_text} | Tự động Buộc dừng & Thả link sau: {time_left}s")
             
             if status != 2:
                 print("\033[1;31m[⚠️] Phát hiện acc văng trận/offline!\033[0m")
-                kill_and_launch_roblox()
-                print("[~] Chờ 45 giây cho game load xong ứng dụng...")
+                kill_and_launch_roblox(PLACE_ID, VIP_LINK)
+                print("[~] Chờ 45 giây cho game load xong map...")
                 time.sleep(45)
             else:
                 time.sleep(check_interval)
