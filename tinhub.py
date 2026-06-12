@@ -139,7 +139,7 @@ def run_tool(config):
             time_str = time.strftime("%H:%M:%S", time.localtime())
             time_left = int(force_timeout - elapsed_time)
             
-            print(f"[{time_str}] Status: {status_text} | Tự động Ép Rejoin sau: {time_left}s")
+            print(f"[{time_str}] Status: {status_text} | Tự động Kill & Rejoin sau: {time_left}s")
             
             if status != 2:
                 print("\033[1;31m[⚠️] Phát hiện acc văng trận/offline!\033[0m")
@@ -164,6 +164,13 @@ def main():
         print(" \033[1;31m[0]\033[0m Thoát hệ thống")
         print("="*55)
         
+        # Kiểm tra xem có cấu hình cũ lưu trong máy chưa để thông báo cho người dùng biết
+        if os.path.exists(CONFIG_FILE):
+            print("\033[1;32m[ℹ️] Đã tìm thấy file cấu hình lưu sẵn trong máy. Bấm [1] để chạy ngay.\033[0m")
+        else:
+            print("\033[1;33m[⚠️] Chưa có cấu hình trong máy. Vui lòng chọn [2] để Setup lần đầu.\033[0m")
+        print("="*55)
+
         choice = input("\033[1;33mNhập số để lựa chọn tác vụ (0-3): \033[0m").strip()
         
         if choice == "1":
@@ -176,11 +183,8 @@ def main():
                     print("\n\033[1;31m[❌] File config lỗi, vui lòng chọn [2] để cài đặt lại.\033[0m")
                     time.sleep(2)
             else:
-                print("\n\033[1;33m[ℹ️] Chưa có file cấu hình. Tự động chuyển qua mục Setup...\033[0m")
-                time.sleep(1.5)
-                config = setup_new_config()
-                if config:
-                    run_tool(config)
+                print("\n\033[1;31m[❌] Lỗi: Chưa có dữ liệu cấu hình! Vui lòng chọn [2] để setup trước.\033[0m")
+                time.sleep(2)
                     
         elif choice == "2":
             setup_new_config()
