@@ -16,7 +16,6 @@ STATUS_MAP = {
 
 def Banner():
     os.system("clear")
-    # Hiển thị chữ TINHUB lớn nghệ thuật phong cách hacker cực đẹp
     print("\033[1;36m")
     print(" ████████╗██╗███╗   ██╗██╗  ██╗██╗   ██╗██████╗ ")
     print(" ╚══██╔══╝██║████╗  ██║██║  ██║██║   ██║██╔══██╗")
@@ -26,7 +25,7 @@ def Banner():
     print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ")
     print("\033[1;32m")
     print("="*55)
-    print("        🚀 TINHUB REJOIN SYSTEM AUTOMATION 🚀       ")
+    print("     🚀 TINHUB REJOIN SYSTEM AUTOMATION (UNIVERSAL) 🚀    ")
     print("="*55)
     print("\033[0m")
 
@@ -89,18 +88,28 @@ def check_roblox_presence(user_id):
     return 0 
 
 def kill_and_launch_roblox(place_id, vip_url):
-    print("\n\033[1;31m[💥] Đang tiến hành KILL ROBLOX (Tắt ứng dụng ngầm)...\033[0m")
+    print("\n\033[1;31m[💥] Đang thực hiện BUỘC DỪNG cả 2 phiên bản Roblox...\033[0m")
+    # Lệnh ép đóng đồng thời cả bản VNG (com.vng.roblox) và bản Quốc Tế (com.roblox.client)
+    os.system("am force-stop com.vng.roblox")
     os.system("am force-stop com.roblox.client")
     time.sleep(2) 
     
     if vip_url and vip_url.startswith("http"):
-        print("\033[1;34m[🚀] Đang kích hoạt mở Server VIP qua trình duyệt...\033[0m")
+        print("\033[1;34m[🚀] Đang kích hoạt mở Server VIP...\033[0m")
         intent_url = vip_url
     else:
-        print(f"\033[1;34m[🚀] Đang tự tạo lệnh mở thẳng vào Game ID: {place_id}...\033[0m")
+        print(f"\033[1;34m[🚀] Đang tạo lệnh mở thẳng vào Game ID: {place_id}...\033[0m")
         intent_url = f"roblox://placeId={place_id}"
         
-    os.system(f"am start -a android.intent.action.VIEW -d '{intent_url}'")
+    # Cơ chế khởi chạy thông minh: Ưu tiên gọi package VNG trước, nếu không có sẽ tự nạp package Quốc Tế
+    # Thêm cờ -p để chỉ định đích danh ứng dụng mở link, tránh việc điện thoại hỏi chọn trình duyệt
+    print("\033[1;32m[~] Đang gọi ứng dụng Roblox VN hành động...\033[0m")
+    launch_status = os.system(f"am start -p com.vng.roblox -a android.intent.action.VIEW -d '{intent_url}' > /dev/null 2>&1")
+    
+    # Nếu hệ thống trả về lỗi (tức là máy không cài bản VNG), tool tự động mở bằng bản Quốc Tế
+    if launch_status != 0:
+        print("\033[1;33m[ℹ️] Không tìm thấy bản VNG, đang chuyển hướng sang mở bản Quốc Tế...\033[0m")
+        os.system(f"am start -p com.roblox.client -a android.intent.action.VIEW -d '{intent_url}'")
 
 def run_tool(config):
     Banner()
@@ -139,7 +148,7 @@ def run_tool(config):
             time_str = time.strftime("%H:%M:%S", time.localtime())
             time_left = int(force_timeout - elapsed_time)
             
-            print(f"[{time_str}] Status: {status_text} | Tự động Kill & Rejoin sau: {time_left}s")
+            print(f"[{time_str}] Status: {status_text} | Tự động Buộc dừng & Rejoin sau: {time_left}s")
             
             if status != 2:
                 print("\033[1;31m[⚠️] Phát hiện acc văng trận/offline!\033[0m")
@@ -164,7 +173,6 @@ def main():
         print(" \033[1;31m[0]\033[0m Thoát hệ thống")
         print("="*55)
         
-        # Kiểm tra xem có cấu hình cũ lưu trong máy chưa để thông báo cho người dùng biết
         if os.path.exists(CONFIG_FILE):
             print("\033[1;32m[ℹ️] Đã tìm thấy file cấu hình lưu sẵn trong máy. Bấm [1] để chạy ngay.\033[0m")
         else:
