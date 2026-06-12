@@ -22,10 +22,10 @@ def Banner():
     print("    ██║   ██║██╔██╗ ██║███████║██║   ██║██████╔╝")
     print("    ██║   ██║██║╚██╗██║██╔══██║██║   ██║██╔══██╗")
     print("    ██║   ██║██║ ╚████║██║  ██║╚██████╔╝██████╔╝")
-    print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ")
+    print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ vn")
     print("\033[1;32m")
     print("="*55)
-    print("    🚀 TINHUB REJOIN SYSTEM AUTOMATION (PROFILE CHECK + ROOT) 🚀    ")
+    print("    🚀 TINHUB REJOIN SYSTEM AUTOMATION (FIX INTENT REGULAR) 🚀    ")
     print("="*55)
     print("\033[0m")
 
@@ -74,7 +74,6 @@ def delete_config():
     time.sleep(2)
 
 def check_roblox_presence_public(user_id):
-    # Sử dụng API công khai của Roblox để check trạng thái dựa trên ID Profile, hoàn toàn không cần cookie
     url = "https://presence.roblox.com/v1/presence/users"
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     payload = {"userIds": [user_id]}
@@ -90,27 +89,26 @@ def check_roblox_presence_public(user_id):
 
 def kill_and_launch_roblox(place_id, vip_url):
     print("\n\033[1;31m[🛡️/💥] ROOT: Đang thực hiện BUỘC DỪNG ứng dụng bằng quyền tối cao...\033[0m")
-    # Gọi quyền Root ép đóng triệt để 100% cả bản VNG lẫn Quốc Tế từ hệ thống
     os.system("su -c 'am force-stop com.vng.roblox'")
     os.system("su -c 'am force-stop com.roblox.client'")
     time.sleep(2.5) 
     
-    # Chuẩn bị link Intent điều hướng
+    # SỬA LỖI ĐIỀU HƯỚNG: Chuyển cấu hình link thường sang cấu trúc URL Web chuẩn của hệ thống Roblox
     if vip_url and vip_url.startswith("http"):
-        print("\033[1;34m[🔗] Đang chuẩn bị thả link điều hướng Server VIP...\033[0m")
+        print("\033[1;34m[🔗] Đang thả link điều hướng Server VIP...\033[0m")
         intent_url = vip_url
     else:
-        print(f"\033[1;34m[🔗] Đang chuẩn bị thả link vào thẳng Game ID: {place_id}...\033[0m")
-        intent_url = f"roblox://placeId={place_id}"
+        print(f"\033[1;34m[🔗] Đang cấu hình URL Web để vượt lỗi phân giải Server Thường (ID: {place_id})...\033[0m")
+        intent_url = f"https://www.roblox.com/games/{place_id}"
         
-    # Thả link trực tiếp bằng quyền Root vào bản VN trước để kích hoạt load sảnh
+    # Thả link trực tiếp bằng quyền Root vào bản VN trước
     print("\033[1;32m[🚀] Đang đẩy lệnh nạp map vào Roblox VN...\033[0m")
-    launch_status = os.system(f"su -c 'am start -p com.vng.roblox -a android.intent.action.VIEW -d \"{intent_url}\"' > /dev/null 2>&1")
+    launch_status = os.system(f"su -c 'am start -a android.intent.action.VIEW -d \"{intent_url}\" com.vng.roblox' > /dev/null 2>&1")
     
-    # Nếu máy không chạy bản VN, tự động chuyển lệnh Root sang kích hoạt bản Quốc Tế vào thẳng map
+    # Nếu lỗi hoặc không chạy bản VN, ép hệ thống gọi chính xác tên gói (package) bản Quốc tế xử lý link Web này
     if launch_status != 0:
-        print("\033[1;33m[ℹ️] Không tìm thấy bản VN, đang đẩy link sang bản Quốc Tế...\033[0m")
-        os.system(f"su -c 'am start -p com.roblox.client -a android.intent.action.VIEW -d \"{intent_url}\"'")
+        print("\033[1;33m[ℹ️] Đang ép đẩy dữ liệu chạy map sang bản Quốc Tế bằng URL Web...\033[0m")
+        os.system(f"su -c 'am start -a android.intent.action.VIEW -d \"{intent_url}\" com.roblox.client' > /dev/null 2>&1")
 
 def run_tool(config):
     Banner()
@@ -123,8 +121,7 @@ def run_tool(config):
     print("\033[1;35m[▶️] TOOL REJOIN ĐANG HOẠT ĐỘNG THEO DÕI PROFILE...\033[0m")
     print(f"Target User ID: {USER_ID} | Game ID: {PLACE_ID}")
     print(f"Chế độ sảnh: " + ("SERVER VIP 💎" if VIP_LINK else "SERVER THƯỜNG 🌐"))
-    print("\033[1;32mCơ chế: CHECK PROFILE PUBLIC 🔍 | ÉP TẮT ROOT 🛡️ | THẢ LINK CHUẨN 🔗\033[0m")
-    print(f"Thời gian quét: {check_interval}s | Vòng lặp ép mở lại: {force_interval} phút")
+    print("\033[1;32mCơ chế: CHECK PROFILE PUBLIC 🔍 | ÉP TẮT ROOT 🛡️ | FIX INTENT SERVER THƯỜNG 🔗\033[0m")
     print("="*55)
     
     force_timeout = force_interval * 60
@@ -135,7 +132,6 @@ def run_tool(config):
             current_time_now = time.time()
             elapsed_time = current_time_now - start_time
             
-            # 1. ÉP REJOIN ĐỊNH KỲ BẤT KỂ TRẠNG THÁI
             if elapsed_time >= force_timeout:
                 print(f"\n\033[1;33m[🔥] ĐÃ ĐẾN HẸN ÉP REJOIN ĐỊNH KỲ ({force_interval} phút)!\033[0m")
                 kill_and_launch_roblox(PLACE_ID, VIP_LINK)
@@ -144,7 +140,6 @@ def run_tool(config):
                 start_time = time.time()
                 continue
                 
-            # 2. KIỂM TRA TRẠNG THÁI ONLINE QUA PROFILE ID
             status = check_roblox_presence_public(USER_ID)
             status_text = STATUS_MAP.get(status, "KHÔNG RÕ")
             time_str = time.strftime("%H:%M:%S", time.localtime())
@@ -152,7 +147,7 @@ def run_tool(config):
             
             print(f"[{time_str}] Profile Status: {status_text} | Tự động Ép tắt & Rejoin sau: {time_left}s")
             
-            if status != 2: # Nếu phát hiện acc văng khỏi trạng thái IN-GAME (2)
+            if status != 2: 
                 print("\033[1;31m[⚠️] Phát hiện acc văng trận hoặc offline!\033[0m")
                 kill_and_launch_roblox(PLACE_ID, VIP_LINK)
                 print("[~] Chờ 45 giây cho game load xong map...")
