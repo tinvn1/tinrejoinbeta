@@ -16,22 +16,23 @@ STATUS_MAP = {
 
 def Banner():
     os.system("clear")
+    # Hiển thị chữ TINHUB lớn nghệ thuật phong cách hacker cực đẹp
     print("\033[1;36m")
     print(" ████████╗██╗███╗   ██╗██╗  ██╗██╗   ██╗██████╗ ")
     print(" ╚══██╔══╝██║████╗  ██║██║  ██║██║   ██║██╔══██╗")
     print("    ██║   ██║██╔██╗ ██║███████║██║   ██║██████╔╝")
     print("    ██║   ██║██║╚██╗██║██╔══██║██║   ██║██╔══██╗")
     print("    ██║   ██║██║ ╚████║██║  ██║╚██████╔╝██████╔╝")
-    print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ vn")
+    print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ")
     print("\033[1;32m")
     print("="*55)
-    print("    🚀 TINHUB REJOIN SYSTEM AUTOMATION (FIX INTENT REGULAR) 🚀    ")
+    print("        🚀 TINHUB REJOIN SYSTEM AUTOMATION 🚀       ")
     print("="*55)
     print("\033[0m")
 
 def setup_new_config():
     Banner()
-    print("\033[1;33m[⚙️] KHỞI TẠO CẤU HÌNH THEO DÕI PROFILE ID\033[0m\n")
+    print("\033[1;33m[⚙️] KHỞI TẠO / SỬA CẤU HÌNH HỆ THỐNG\033[0m\n")
     
     try:
         user_id = int(input("\033[1;32m[1] Nhập ID Profile cần check (Ví dụ: 312148668):\033[0m ").strip())
@@ -41,7 +42,7 @@ def setup_new_config():
         vip_link = input("    => Link: ").strip()
         
         check_interval = int(input("\033[1;32m[4] Nhập số giây giãn cách kiểm tra (Ví dụ: 15):\033[0m ").strip())
-        force_interval = int(input("\033[1;32m[5] Sau bao nhiêu phút thì ÉP REJOIN định kỳ (Ví dụ: 60):\033[0m ").strip())
+        force_interval = int(input("\033[1;32m[5] Sau bao nhiêu phút thì ÉP REJOIN 1 lần (Ví dụ: 60):\033[0m ").strip())
     except ValueError:
         print("\n\033[1;31m[❌] Dữ liệu nhập sai định dạng! Vui lòng setup lại.\033[0m")
         time.sleep(2)
@@ -70,15 +71,15 @@ def delete_config():
         os.remove(CONFIG_FILE)
         print("\n\033[1;32m[🗑️] Đã xóa file cấu hình cũ thành công!\033[0m")
     else:
-        print("\n\033[1;33m[ℹ️] Không tìm thấy file cấu hình để xóa.\033[0m")
+        print("\n\033[1;33m[ℹ️] Không tìm thấy file cấu hình nào để xóa.\033[0m")
     time.sleep(2)
 
-def check_roblox_presence_public(user_id):
+def check_roblox_presence(user_id):
     url = "https://presence.roblox.com/v1/presence/users"
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     payload = {"userIds": [user_id]}
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        response = requests.post(url, json=payload, headers=headers)
         if response.status_code == 200:
             data = response.json()
             if data and "userPresences" in data and len(data["userPresences"]) > 0:
@@ -88,27 +89,18 @@ def check_roblox_presence_public(user_id):
     return 0 
 
 def kill_and_launch_roblox(place_id, vip_url):
-    print("\n\033[1;31m[🛡️/💥] ROOT: Đang thực hiện BUỘC DỪNG ứng dụng bằng quyền tối cao...\033[0m")
-    os.system("su -c 'am force-stop com.vng.roblox'")
-    os.system("su -c 'am force-stop com.roblox.client'")
-    time.sleep(2.5) 
+    print("\n\033[1;31m[💥] Đang tiến hành KILL ROBLOX (Tắt ứng dụng ngầm)...\033[0m")
+    os.system("am force-stop com.roblox.client")
+    time.sleep(2) 
     
-    # SỬA LỖI ĐIỀU HƯỚNG: Chuyển cấu hình link thường sang cấu trúc URL Web chuẩn của hệ thống Roblox
     if vip_url and vip_url.startswith("http"):
-        print("\033[1;34m[🔗] Đang thả link điều hướng Server VIP...\033[0m")
+        print("\033[1;34m[🚀] Đang kích hoạt mở Server VIP qua trình duyệt...\033[0m")
         intent_url = vip_url
     else:
-        print(f"\033[1;34m[🔗] Đang cấu hình URL Web để vượt lỗi phân giải Server Thường (ID: {place_id})...\033[0m")
-        intent_url = f"https://www.roblox.com/games/{place_id}"
+        print(f"\033[1;34m[🚀] Đang tự tạo lệnh mở thẳng vào Game ID: {place_id}...\033[0m")
+        intent_url = f"roblox://placeId={place_id}"
         
-    # Thả link trực tiếp bằng quyền Root vào bản VN trước
-    print("\033[1;32m[🚀] Đang đẩy lệnh nạp map vào Roblox VN...\033[0m")
-    launch_status = os.system(f"su -c 'am start -a android.intent.action.VIEW -d \"{intent_url}\" com.vng.roblox' > /dev/null 2>&1")
-    
-    # Nếu lỗi hoặc không chạy bản VN, ép hệ thống gọi chính xác tên gói (package) bản Quốc tế xử lý link Web này
-    if launch_status != 0:
-        print("\033[1;33m[ℹ️] Đang ép đẩy dữ liệu chạy map sang bản Quốc Tế bằng URL Web...\033[0m")
-        os.system(f"su -c 'am start -a android.intent.action.VIEW -d \"{intent_url}\" com.roblox.client' > /dev/null 2>&1")
+    os.system(f"am start -a android.intent.action.VIEW -d '{intent_url}'")
 
 def run_tool(config):
     Banner()
@@ -118,10 +110,10 @@ def run_tool(config):
     check_interval = config["check_interval"]
     force_interval = config["force_interval"]
 
-    print("\033[1;35m[▶️] TOOL REJOIN ĐANG HOẠT ĐỘNG THEO DÕI PROFILE...\033[0m")
+    print("\033[1;35m[▶️] TOOL ĐANG HOẠT ĐỘNG NGẦM...\033[0m")
     print(f"Target User ID: {USER_ID} | Game ID: {PLACE_ID}")
     print(f"Chế độ sảnh: " + ("SERVER VIP 💎" if VIP_LINK else "SERVER THƯỜNG 🌐"))
-    print("\033[1;32mCơ chế: CHECK PROFILE PUBLIC 🔍 | ÉP TẮT ROOT 🛡️ | FIX INTENT SERVER THƯỜNG 🔗\033[0m")
+    print(f"Thời gian quét: {check_interval}s | Vòng lặp ép Rejoin: {force_interval} phút")
     print("="*55)
     
     force_timeout = force_interval * 60
@@ -132,25 +124,27 @@ def run_tool(config):
             current_time_now = time.time()
             elapsed_time = current_time_now - start_time
             
+            # 1. ÉP REJOIN ĐỊNH KỲ BẤT KỂ TRẠNG THÁI
             if elapsed_time >= force_timeout:
                 print(f"\n\033[1;33m[🔥] ĐÃ ĐẾN HẸN ÉP REJOIN ĐỊNH KỲ ({force_interval} phút)!\033[0m")
                 kill_and_launch_roblox(PLACE_ID, VIP_LINK)
-                print("[~] Chờ 45 giây cho ứng dụng khởi động vào trận...")
+                print("[~] Chờ 45 giây sảnh khởi động xong...")
                 time.sleep(45)
                 start_time = time.time()
                 continue
                 
-            status = check_roblox_presence_public(USER_ID)
+            # 2. KIỂM TRA TRẠNG THÁI ONLINE/IN-GAME
+            status = check_roblox_presence(USER_ID)
             status_text = STATUS_MAP.get(status, "KHÔNG RÕ")
             time_str = time.strftime("%H:%M:%S", time.localtime())
             time_left = int(force_timeout - elapsed_time)
             
-            print(f"[{time_str}] Profile Status: {status_text} | Tự động Ép tắt & Rejoin sau: {time_left}s")
+            print(f"[{time_str}] Status: {status_text} | Tự động Ép Rejoin sau: {time_left}s")
             
-            if status != 2: 
-                print("\033[1;31m[⚠️] Phát hiện acc văng trận hoặc offline!\033[0m")
+            if status != 2:
+                print("\033[1;31m[⚠️] Phát hiện acc văng trận/offline!\033[0m")
                 kill_and_launch_roblox(PLACE_ID, VIP_LINK)
-                print("[~] Chờ 45 giây cho game load xong map...")
+                print("[~] Chờ 45 giây game load sảnh...")
                 time.sleep(45)
             else:
                 time.sleep(check_interval)
@@ -170,12 +164,6 @@ def main():
         print(" \033[1;31m[0]\033[0m Thoát hệ thống")
         print("="*55)
         
-        if os.path.exists(CONFIG_FILE):
-            print("\033[1;32m[ℹ️] Đã tìm thấy cấu hình Profile lưu sẵn. Bấm [1] để chạy ngay.\033[0m")
-        else:
-            print("\033[1;33m[⚠️] Chưa có cấu hình trong máy. Vui lòng chọn [2] để Setup lần đầu.\033[0m")
-        print("="*55)
-
         choice = input("\033[1;33mNhập số để lựa chọn tác vụ (0-3): \033[0m").strip()
         
         if choice == "1":
@@ -188,8 +176,11 @@ def main():
                     print("\n\033[1;31m[❌] File config lỗi, vui lòng chọn [2] để cài đặt lại.\033[0m")
                     time.sleep(2)
             else:
-                print("\n\033[1;31m[❌] Lỗi: Chưa có dữ liệu cấu hình! Vui lòng chọn [2] để setup trước.\033[0m")
-                time.sleep(2)
+                print("\n\033[1;33m[ℹ️] Chưa có file cấu hình. Tự động chuyển qua mục Setup...\033[0m")
+                time.sleep(1.5)
+                config = setup_new_config()
+                if config:
+                    run_tool(config)
                     
         elif choice == "2":
             setup_new_config()
