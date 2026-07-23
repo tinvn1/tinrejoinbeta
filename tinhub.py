@@ -4,8 +4,9 @@ import requests
 import json
 import sys
 
-# Đường dẫn lưu file cấu hình tại thư mục Download
-CONFIG_FILE = "/sdcard/Download/config_rejoin.json"
+# Đường dẫn lưu file cấu hình (Ưu tiên lưu tại thư mục script, fallback sang Download)
+CONFIG_FILE = "config_rejoin.json"
+FALLBACK_CONFIG_FILE = "/sdcard/Download/config_rejoin.json"
 
 STATUS_MAP = {
     0: "OFFLINE 🔴",
@@ -14,19 +15,25 @@ STATUS_MAP = {
     3: "IN STUDIO 🛠️"
 }
 
+def get_active_config_path():
+    if os.path.exists(CONFIG_FILE):
+        return CONFIG_FILE
+    elif os.path.exists(FALLBACK_CONFIG_FILE):
+        return FALLBACK_CONFIG_FILE
+    return CONFIG_FILE
+
 def Banner():
     os.system("clear")
-    # Hiển thị chữ TINHUB lớn nghệ thuật phong cách hacker cực đẹp
     print("\033[1;36m")
     print(" ████████╗██╗███╗   ██╗██╗  ██╗██╗   ██╗██████╗ ")
     print(" ╚══██╔══╝██║████╗  ██║██║  ██║██║   ██║██╔══██╗")
     print("    ██║   ██║██╔██╗ ██║███████║██║   ██║██████╔╝")
     print("    ██║   ██║██║╚██╗██║██╔══██║██║   ██║██╔══██╗")
     print("    ██║   ██║██║ ╚████║██║  ██║╚██████╔╝██████╔╝")
-    print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ")
+    print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝ ╚═════╝ ╚═════╝ ")
     print("\033[1;32m")
     print("="*55)
-    print("        🚀 TINHUB REJOIN SYSTEM AUTOMATION 🚀       ")
+    print("        🚀 TINHUB REJOIN SYSTEM AUTOMATION v2.0 🚀        ")
     print("="*55)
     print("\033[0m")
 
@@ -41,8 +48,8 @@ def setup_new_config():
         print("\033[1;32m[3] Nhập Link Server VIP (Nếu dùng Server Thường, nhấn ENTER bỏ qua):\033[0m")
         vip_link = input("    => Link: ").strip()
         
-        check_interval = int(input("\033[1;32m[4] Nhập số giây giãn cách kiểm tra (Ví dụ: 15):\033[0m ").strip())
-        force_interval = int(input("\033[1;32m[5] Sau bao nhiêu phút thì ÉP REJOIN 1 lần (Ví dụ: 60):\033[0m ").strip())
+        check_interval = int(input("\033[1;32m[4] Nhập số giây giãn cách kiểm tra (Mặc định: 15):\033[0m ").strip() or "15")
+        force_interval = int(input("\033[1;32m[5] Sau bao nhiêu phút thì ÉP REJOIN 1 lần (Mặc định: 60):\033[0m ").strip() or "60")
     except ValueError:
         print("\n\033[1;31m[❌] Dữ liệu nhập sai định dạng! Vui lòng setup lại.\033[0m")
         time.sleep(2)
@@ -56,19 +63,33 @@ def setup_new_config():
         "force_interval": force_interval
     }
 
+    target_path = get_active_config_path()
     try:
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        with open(target_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=4, ensure_ascii=False)
-        print("\n\033[1;32m[💾] Đã lưu cấu hình an toàn vào thư mục Download!\033[0m")
+        print(f"\n\033[1;32m[💾] Đã lưu cấu hình an toàn vào {target_path}!\033[0m")
     except Exception as e:
-        print(f"\n\033[1;31m[❌] Lỗi lưu file: {e}\033[0m")
+        print(f"\n\033[1;33m[⚠️] Lỗi lưu cấu hình tại local ({e}), chuyển sang lưu ở Download...\033[0m")
+        try:
+            with open(FALLBACK_CONFIG_FILE, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=4, ensure_ascii=False)
+            print("\n\033[1;32m[💾] Đã lưu cấu hình vào thư mục Download thành công!\033[0m")
+        except Exception as err:
+            print(f"\n\033[1;31m[❌] Lỗi lưu file: {err}\033[0m")
     
     time.sleep(2)
     return config
 
 def delete_config():
-    if os.path.exists(CONFIG_FILE):
-        os.remove(CONFIG_FILE)
+    deleted = False
+    for path in [CONFIG_FILE, FALLBACK_CONFIG_FILE]:
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+                deleted = True
+            except:
+                pass
+    if deleted:
         print("\n\033[1;32m[🗑️] Đã xóa file cấu hình cũ thành công!\033[0m")
     else:
         print("\n\033[1;33m[ℹ️] Không tìm thấy file cấu hình nào để xóa.\033[0m")
@@ -79,18 +100,18 @@ def check_roblox_presence(user_id):
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     payload = {"userIds": [user_id]}
     try:
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
         if response.status_code == 200:
             data = response.json()
             if data and "userPresences" in data and len(data["userPresences"]) > 0:
                 return data["userPresences"][0].get("userPresenceType", 0)
-    except:
+    except Exception:
         pass
     return 0 
 
 def kill_and_launch_roblox(place_id, vip_url):
     print("\n\033[1;31m[💥] Đang tiến hành KILL ROBLOX (Tắt ứng dụng ngầm)...\033[0m")
-    os.system("am force-stop com.roblox.client")
+    os.system("su -c 'am force-stop com.roblox.client' 2>/dev/null || am force-stop com.roblox.client")
     time.sleep(2) 
     
     if vip_url and vip_url.startswith("http"):
@@ -100,15 +121,15 @@ def kill_and_launch_roblox(place_id, vip_url):
         print(f"\033[1;34m[🚀] Đang tự tạo lệnh mở thẳng vào Game ID: {place_id}...\033[0m")
         intent_url = f"roblox://placeId={place_id}"
         
-    os.system(f"am start -a android.intent.action.VIEW -d '{intent_url}'")
+    os.system(f"su -c \"am start -a android.intent.action.VIEW -d '{intent_url}' com.roblox.client\" 2>/dev/null || am start -a android.intent.action.VIEW -d '{intent_url}'")
 
 def run_tool(config):
     Banner()
     USER_ID = config["user_id"]
     PLACE_ID = config["place_id"]
     VIP_LINK = config["vip_link"]
-    check_interval = config["check_interval"]
-    force_interval = config["force_interval"]
+    check_interval = config.get("check_interval", 15)
+    force_interval = config.get("force_interval", 60)
 
     print("\033[1;35m[▶️] TOOL ĐANG HOẠT ĐỘNG NGẦM...\033[0m")
     print(f"Target User ID: {USER_ID} | Game ID: {PLACE_ID}")
@@ -137,7 +158,7 @@ def run_tool(config):
             status = check_roblox_presence(USER_ID)
             status_text = STATUS_MAP.get(status, "KHÔNG RÕ")
             time_str = time.strftime("%H:%M:%S", time.localtime())
-            time_left = int(force_timeout - elapsed_time)
+            time_left = max(0, int(force_timeout - elapsed_time))
             
             print(f"[{time_str}] Status: {status_text} | Tự động Ép Rejoin sau: {time_left}s")
             
@@ -166,13 +187,14 @@ def main():
         
         choice = input("\033[1;33mNhập số để lựa chọn tác vụ (0-3): \033[0m").strip()
         
+        config_path = get_active_config_path()
         if choice == "1":
-            if os.path.exists(CONFIG_FILE):
+            if os.path.exists(config_path):
                 try:
-                    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                    with open(config_path, "r", encoding="utf-8") as f:
                         config = json.load(f)
                     run_tool(config)
-                except:
+                except Exception:
                     print("\n\033[1;31m[❌] File config lỗi, vui lòng chọn [2] để cài đặt lại.\033[0m")
                     time.sleep(2)
             else:
