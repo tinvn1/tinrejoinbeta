@@ -3,9 +3,6 @@ import time
 import requests
 import json
 import sys
-import select
-import tty
-import termios
 import re
 
 CONFIG_FILE = "config_rejoin.json"
@@ -27,11 +24,8 @@ LANG = {
         "m4": "[4] Ngôn ngữ / Language",
         "m5": "[5] Xóa cấu hình hiện tại",
         "m0": "[0] Thoát hệ thống",
-        "choice": "👉 CHẠM TRỰC TIẾP VÀO DÒNG MENU ĐỂ CHỌN",
+        "choice": "👉 Nhập lựa chọn của bạn: ",
         "running": "TOOL ĐANG HOẠT ĐỘNG NGẦM...",
-        "btn_pause": " [ ⏸️ [1] TẠM DỪNG HOẠT ĐỘNG ] ",
-        "btn_stop":  " [ 🛑 [2] DỪNG / MENU CHÍNH ] ",
-        "paused_msg": "⏸️ [ĐÃ TẠM DỪNG] Bấm [1] để chạy tiếp | Bấm [2] để về Menu...",
         "force_rejoin": "ĐÃ ĐẾN HẸN ÉP REJOIN ĐỊNH KỲ!",
         "offline_warn": "Phát hiện acc văng trận/offline!"
     },
@@ -50,25 +44,14 @@ LANG = {
         "m4": "[4] Language Settings",
         "m5": "[5] Delete Current Config",
         "m0": "[0] Exit System",
-        "choice": "👉 TAP DIRECTLY ON ANY MENU LINE TO CHOOSE",
+        "choice": "👉 Enter your choice: ",
         "running": "TOOL IS RUNNING IN BACKGROUND...",
-        "btn_pause": " [ ⏸️ [1] PAUSE OPERATION ] ",
-        "btn_stop":  " [ 🛑 [2] STOP / MAIN MENU ] ",
-        "paused_msg": "⏸️ [PAUSED] Press [1] to resume | Press [2] to return to Menu...",
         "force_rejoin": "SCHEDULED FORCE REJOIN TRIGGERED!",
         "offline_warn": "Account disconnected / offline detected!"
     }
 }
 
 current_lang = "VNI"
-
-def enable_mouse():
-    sys.stdout.write("\033[?1000h\033[?1006h")
-    sys.stdout.flush()
-
-def disable_mouse():
-    sys.stdout.write("\033[?1000l\033[?1006l")
-    sys.stdout.flush()
 
 def get_active_config_path():
     if os.path.exists(CONFIG_FILE):
@@ -83,7 +66,7 @@ def load_config():
         try:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
+        except Exception:
             return {}
     return {}
 
@@ -109,36 +92,15 @@ def Banner():
     print("\033[1;37m        🚀 TINHUB REJOIN SYSTEM AUTOMATION v4.3 🚀\033[0m")
     print("\033[1;32m=======================================================\033[0m\n")
 
-def read_input_event():
-    if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-        buf = sys.stdin.read(1)
-        if buf == '\033':
-            time.sleep(0.01)
-            while sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-                buf += sys.stdin.read(1)
-            if buf.startswith("\033[<") and ('m' in buf or 'M' in buf):
-                try:
-                    parts = buf[3:-1].split(';')
-                    if len(parts) >= 3 and parts[0] in ['0', '2']:
-                        x = int(parts[1])
-                        y = int(parts[2])
-                        return ("TOUCH", x, y)
-                except:
-                    pass
-        return ("KEY", buf)
-    return None
-
-def print_status_box(user_id, status_text, next_rejoin_s, is_paused=False):
+def print_status_box(user_id, status_text, next_rejoin_s):
     l = LANG[current_lang]
-    state_display = "PAUSED ⏸️" if is_paused else status_text
     print("\033[1;34m┌─────────────────────────────────────────────────────┐\033[0m")
     print(f"\033[1;34m│\033[0m  \033[1;33m📌 {l['status_title']}\033[0m                                 \033[1;34m│\033[0m")
-    print(f"\033[1;34m│\033[0m  👤 User ID : \033[1;36m{user_id:<36}\033[0m \033[1;34m│\033[0m")
-    print(f"\033[1;34m│\033[0m  📊 State   : \033[1;32m{state_display:<36}\033[0m \033[1;34m│\033[0m")
+    print(f"\033[1;34m│\033[0m  👤 User ID : \033[1;36m{str(user_id):<36}\033[0m \033[1;34m│\033[0m")
+    print(f"\033[1;34m│\033[0m  📊 State   : \033[1;32m{status_text:<36}\033[0m \033[1;34m│\033[0m")
     print(f"\033[1;34m│\033[0m  ⏳ Rejoin In: \033[1;35m{str(next_rejoin_s) + 's':<35}\033[0m \033[1;34m│\033[0m")
     print("\033[1;34m└─────────────────────────────────────────────────────┘\033[0m")
 
-# --- HÀM HỖ TRỢ TỰ ĐỘNG BỔ SUNG ---
 def get_user_id_from_username(username):
     url = "https://users.roblox.com/v1/usernames/users"
     payload = {"usernames": [username], "excludeBannedUsers": True}
@@ -153,15 +115,12 @@ def get_user_id_from_username(username):
     return None
 
 def extract_place_id_from_vip(vip_link):
-    # Regex tìm chuỗi số nằm sau /games/ hoặc games/
     match = re.search(r'/games/(\d+)', vip_link)
     if match:
         return match.group(1)
     return None
 
-# --- SETUP CẤU HÌNH SERVER & ACCOUNT THÔNG MINH ---
 def setup_server_config():
-    disable_mouse()
     Banner()
     print("\033[1;33m[🌐] SETUP SERVER & ACCOUNT (TỰ ĐỘNG / THỦ CÔNG)\033[0m\n")
     
@@ -179,10 +138,9 @@ def setup_server_config():
         else:
             print("\033[1;31m[❌] Không tìm thấy User ID cho Username này!\033[0m")
             time.sleep(2)
-            enable_mouse()
             return None
 
-    # 2. Nhập VIP Link trước
+    # 2. Nhập VIP Link
     vip_link = input("\n\033[1;32m[2] Dán Link Server VIP (Ấn ENTER nếu không dùng VIP):\033[0m ").strip()
     place_id = None
 
@@ -191,13 +149,12 @@ def setup_server_config():
         if place_id:
             print(f"\033[1;32m[✔] Đã tự động tách Game Place ID từ Link VIP: {place_id}\033[0m")
     
-    # 3. Nếu không tách được từ VIP link hoặc không dùng VIP, yêu cầu nhập Place ID
+    # 3. Nhập Place ID nếu không dùng VIP
     if not place_id:
         place_id = input("\033[1;32m[3] Nhập Game Place ID:\033[0m ").strip()
         if not place_id:
             print("\n\033[1;31m[❌] Place ID không được để trống!\033[0m")
             time.sleep(2)
-            enable_mouse()
             return None
 
     config = load_config()
@@ -210,11 +167,9 @@ def setup_server_config():
     save_config(config)
     print("\n\033[1;32m[💾] Đã lưu thông tin Server & Account thành công!\033[0m")
     time.sleep(1.5)
-    enable_mouse()
     return config
 
 def setup_timer_config():
-    disable_mouse()
     Banner()
     print("\033[1;33m[⏱️] SETUP TIMER / CÀI ĐẶT THỜI GIAN CHECK & REJOIN\033[0m\n")
     try:
@@ -223,7 +178,6 @@ def setup_timer_config():
     except ValueError:
         print("\n\033[1;31m[❌] Input Error / Lỗi nhập liệu!\033[0m")
         time.sleep(2)
-        enable_mouse()
         return None
 
     config = load_config()
@@ -234,7 +188,6 @@ def setup_timer_config():
     save_config(config)
     print("\n\033[1;32m[💾] Đã lưu thiết lập thời gian thành công!\033[0m")
     time.sleep(1.5)
-    enable_mouse()
     return config
 
 def check_roblox_presence(user_id):
@@ -275,50 +228,17 @@ def run_tool(config):
 
     force_timeout = force_interval * 60
     start_time = time.time()
-    is_paused = False
 
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
+    print("\n\033[1;33m[💡] Nhấn Ctrl + C bất kỳ lúc nào để dừng Tool và quay lại Menu.\033[0m")
+    time.sleep(2)
 
     try:
-        tty.setcbreak(fd)
-        enable_mouse()
-        
         while True:
             Banner()
             print(f"\033[1;35m[▶️] {l['running']}\033[0m\n")
 
             elapsed_time = time.time() - start_time
             time_left = max(0, int(force_timeout - elapsed_time))
-
-            print(f"\033[1;44;37m{l['btn_pause']}\033[0m\n")
-            print(f"\033[1;41;37m{l['btn_stop']}\033[0m\n")
-
-            if is_paused:
-                print_status_box(USER_ID, "PAUSED ⏸️", time_left, is_paused=True)
-                print(f"\n\033[1;33m{l['paused_msg']}\033[0m")
-                
-                while is_paused:
-                    evt = read_input_event()
-                    if evt:
-                        kind = evt[0]
-                        if kind == "TOUCH":
-                            y = evt[2]
-                            if 16 <= y <= 18:
-                                is_paused = False
-                                break
-                            elif 18 < y <= 20:
-                                print("\n\033[1;31m[🛑] QUAY VỀ MENU CHÍNH!\033[0m")
-                                time.sleep(1)
-                                return
-                        elif kind == "KEY":
-                            if evt[1] in ['1', ' ']:
-                                is_paused = False
-                                break
-                            elif evt[1] in ['2', 's', 'S']:
-                                return
-                    time.sleep(0.2)
-                continue
 
             if elapsed_time >= force_timeout:
                 print(f"\n\033[1;33m[🔥] {l['force_rejoin']}\033[0m")
@@ -337,32 +257,11 @@ def run_tool(config):
                 kill_and_launch_roblox(PLACE_ID, VIP_LINK)
                 time.sleep(45)
             else:
-                for _ in range(check_interval * 5):
-                    evt = read_input_event()
-                    if evt:
-                        kind = evt[0]
-                        if kind == "TOUCH":
-                            y = evt[2]
-                            if 16 <= y <= 18:
-                                is_paused = True
-                                break
-                            elif 18 < y <= 20:
-                                print("\n\033[1;31m[🛑] QUAY VỀ MENU CHÍNH!\033[0m")
-                                time.sleep(1)
-                                return
-                        elif kind == "KEY":
-                            if evt[1] in ['1', ' ']:
-                                is_paused = True
-                                break
-                            elif evt[1] in ['2', 's', 'S']:
-                                return
-                    time.sleep(0.2)
+                time.sleep(check_interval)
 
     except KeyboardInterrupt:
-        pass
-    finally:
-        disable_mouse()
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        print("\n\033[1;31m[🛑] Đã dừng Tool Rejoin. Đang quay lại Menu...\033[0m")
+        time.sleep(1.5)
 
 def change_language():
     global current_lang
@@ -372,56 +271,25 @@ def change_language():
     print(" \033[1;36m[2] English (ENG)\033[0m")
     print(" \033[1;31m[0] Quay lại / Back\033[0m\n")
     
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    
-    selected_lang = None
-    try:
-        tty.setcbreak(fd)
-        enable_mouse()
-        while True:
-            evt = read_input_event()
-            if evt:
-                if evt[0] == "TOUCH":
-                    y = evt[2]
-                    if y == 13:
-                        selected_lang = "VNI"
-                        break
-                    elif y == 14:
-                        selected_lang = "ENG"
-                        break
-                    elif y == 15:
-                        break
-                elif evt[0] == "KEY":
-                    if evt[1] == '1':
-                        selected_lang = "VNI"
-                        break
-                    elif evt[1] == '2':
-                        selected_lang = "ENG"
-                        break
-                    elif evt[1] == '0':
-                        break
-            time.sleep(0.1)
-    finally:
-        disable_mouse()
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    choice = input("👉 Chọn ngôn ngữ / Choose language: ").strip()
+    if choice == "1":
+        current_lang = "VNI"
+    elif choice == "2":
+        current_lang = "ENG"
+    else:
+        return
 
-    if selected_lang:
-        current_lang = selected_lang
-        cfg = load_config()
-        cfg["lang"] = current_lang
-        save_config(cfg)
-        print(f"\n\033[1;32m[✔] Language changed to {current_lang}!\033[0m")
-        time.sleep(1)
+    cfg = load_config()
+    cfg["lang"] = current_lang
+    save_config(cfg)
+    print(f"\n\033[1;32m[✔] Language changed to {current_lang}!\033[0m")
+    time.sleep(1)
 
 def main():
     global current_lang
     cfg = load_config()
     if "lang" in cfg and cfg["lang"] in LANG:
         current_lang = cfg["lang"]
-
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
 
     while True:
         Banner()
@@ -434,31 +302,8 @@ def main():
         print(f" \033[1;36m{l['m5']}\033[0m")
         print(f" \033[1;31m{l['m0']}\033[0m")
         print("=======================================================")
-        print(f"\033[1;33m{l['choice']}\033[0m\n")
-
-        try:
-            tty.setcbreak(fd)
-            enable_mouse()
-            
-            choice = None
-            while not choice:
-                evt = read_input_event()
-                if evt:
-                    if evt[0] == "TOUCH":
-                        y = evt[2]
-                        if y == 13: choice = "1"
-                        elif y == 14: choice = "2"
-                        elif y == 15: choice = "3"
-                        elif y == 16: choice = "4"
-                        elif y == 17: choice = "5"
-                        elif y == 18: choice = "0"
-                    elif evt[0] == "KEY":
-                        choice = evt[1]
-                time.sleep(0.05)
-
-        finally:
-            disable_mouse()
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        
+        choice = input(f"\033[1;33m{l['choice']}\033[0m").strip()
 
         if choice == "1":
             config = load_config()
