@@ -28,9 +28,9 @@ LANG = {
         "m0": "[0] Thoát hệ thống",
         "choice": "👉 CHẠM TRỰC TIẾP VÀO DÒNG MENU ĐỂ CHỌN",
         "running": "TOOL ĐANG HOẠT ĐỘNG NGẦM...",
-        "btn_pause": " [ ⏸️ CHẠM VÀO ĐÂY ĐỂ TẠM DỪNG / TIẾP TỤC ] ",
-        "btn_stop":  " [ 🛑 CHẠM VÀO ĐÂY ĐỂ DỪNG HẲN / THOÁT TOOL ] ",
-        "paused_msg": "⏸️ [ĐÃ TẠM DỪNG] Chạm nút PAUSE để chạy tiếp | STOP để thoát...",
+        "btn_pause": " [ ⏸️ [1] TẠM DỪNG HOẠT ĐỘNG ] ",
+        "btn_stop":  " [ 🛑 [2] DỪNG / MENU CHÍNH ] ",
+        "paused_msg": "⏸️ [ĐÃ TẠM DỪNG] Bấm [1] để chạy tiếp | Bấm [2] để về Menu...",
         "force_rejoin": "ĐÃ ĐẾN HẸN ÉP REJOIN ĐỊNH KỲ!",
         "offline_warn": "Phát hiện acc văng trận/offline!"
     },
@@ -51,9 +51,9 @@ LANG = {
         "m0": "[0] Exit System",
         "choice": "👉 TAP DIRECTLY ON ANY MENU LINE TO CHOOSE",
         "running": "TOOL IS RUNNING IN BACKGROUND...",
-        "btn_pause": " [ ⏸️ TAP HERE TO PAUSE / RESUME ] ",
-        "btn_stop":  " [ 🛑 TAP HERE TO STOP FULLY / EXIT ] ",
-        "paused_msg": "⏸️ [PAUSED] Tap PAUSE button to resume | STOP to exit...",
+        "btn_pause": " [ ⏸️ [1] PAUSE OPERATION ] ",
+        "btn_stop":  " [ 🛑 [2] STOP / MAIN MENU ] ",
+        "paused_msg": "⏸️ [PAUSED] Press [1] to resume | Press [2] to return to Menu...",
         "force_rejoin": "SCHEDULED FORCE REJOIN TRIGGERED!",
         "offline_warn": "Account disconnected / offline detected!"
     }
@@ -137,7 +137,6 @@ def print_status_box(user_id, status_text, next_rejoin_s, is_paused=False):
     print(f"\033[1;34m│\033[0m  ⏳ Rejoin In: \033[1;35m{str(next_rejoin_s) + 's':<35}\033[0m \033[1;34m│\033[0m")
     print("\033[1;34m└─────────────────────────────────────────────────────┘\033[0m")
 
-# 1. SETUP CẤU HÌNH SERVER & ACCOUNT (TÁCH RIÊNG)
 def setup_server_config():
     disable_mouse()
     Banner()
@@ -165,7 +164,6 @@ def setup_server_config():
     enable_mouse()
     return config
 
-# 2. SETUP THỜI GIAN CHECK (TÁCH RIÊNG)
 def setup_timer_config():
     disable_mouse()
     Banner()
@@ -257,18 +255,18 @@ def run_tool(config):
                         kind = evt[0]
                         if kind == "TOUCH":
                             y = evt[2]
-                            if 16 <= y <= 18:
+                            if 16 <= y <= 18:  # Nút 1: Tiếp tục
                                 is_paused = False
                                 break
-                            elif 18 < y <= 20:
-                                print("\n\033[1;31m[🛑] STOPPED BY TOUCH!\033[0m")
-                                time.sleep(1.5)
+                            elif 18 < y <= 20: # Nút 2: Dừng hẳn về Menu
+                                print("\n\033[1;31m[🛑] QUAY VỀ MENU CHÍNH!\033[0m")
+                                time.sleep(1)
                                 return
                         elif kind == "KEY":
-                            if evt[1] == ' ':
+                            if evt[1] in ['1', ' ']: # Phím 1 hoặc Space để tiếp tục
                                 is_paused = False
                                 break
-                            elif evt[1] in ['s', 'S']:
+                            elif evt[1] in ['2', 's', 'S']: # Phím 2 hoặc S để về Menu
                                 return
                     time.sleep(0.2)
                 continue
@@ -296,18 +294,18 @@ def run_tool(config):
                         kind = evt[0]
                         if kind == "TOUCH":
                             y = evt[2]
-                            if 16 <= y <= 18:
+                            if 16 <= y <= 18:  # Chạm nút 1: Tạm dừng
                                 is_paused = True
                                 break
-                            elif 18 < y <= 20:
-                                print("\n\033[1;31m[🛑] STOPPED BY TOUCH!\033[0m")
-                                time.sleep(1.5)
+                            elif 18 < y <= 20: # Chạm nút 2: Dừng / Về Menu
+                                print("\n\033[1;31m[🛑] QUAY VỀ MENU CHÍNH!\033[0m")
+                                time.sleep(1)
                                 return
                         elif kind == "KEY":
-                            if evt[1] == ' ':
+                            if evt[1] in ['1', ' ']: # Bấm 1 hoặc Space: Tạm dừng
                                 is_paused = True
                                 break
-                            elif evt[1] in ['s', 'S']:
+                            elif evt[1] in ['2', 's', 'S']: # Bấm 2 hoặc S: Về Menu
                                 return
                     time.sleep(0.2)
 
@@ -321,11 +319,14 @@ def change_language():
     global current_lang
     Banner()
     print("\033[1;36m[ LANGUAGE SETTINGS / CÀI ĐẶT NGÔN NGỮ ]\033[0m\n")
-    print(" 👉 [Chạm dòng này]: Tiếng Việt (VNI)")
-    print(" 👉 [Chạm dòng này]: English (ENG)\n")
+    print(" \033[1;36m[1] Tiếng Việt (VNI)\033[0m")
+    print(" \033[1;36m[2] English (ENG)\033[0m")
+    print(" \033[1;31m[0] Quay lại / Back\033[0m\n")
     
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
+    
+    selected_lang = None
     try:
         tty.setcbreak(fd)
         enable_mouse()
@@ -335,31 +336,39 @@ def change_language():
                 if evt[0] == "TOUCH":
                     y = evt[2]
                     if y == 13:
-                        current_lang = "VNI"
+                        selected_lang = "VNI"
                         break
                     elif y == 14:
-                        current_lang = "ENG"
+                        selected_lang = "ENG"
+                        break
+                    elif y == 15:
                         break
                 elif evt[0] == "KEY":
                     if evt[1] == '1':
-                        current_lang = "VNI"
+                        selected_lang = "VNI"
                         break
                     elif evt[1] == '2':
-                        current_lang = "ENG"
+                        selected_lang = "ENG"
+                        break
+                    elif evt[1] == '0':
                         break
             time.sleep(0.1)
     finally:
         disable_mouse()
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-    cfg = load_config()
-    cfg["lang"] = current_lang
-    save_config(cfg)
+    if selected_lang:
+        current_lang = selected_lang
+        cfg = load_config()
+        cfg["lang"] = current_lang
+        save_config(cfg)
+        print(f"\n\033[1;32m[✔] Language changed to {current_lang}!\033[0m")
+        time.sleep(1)
 
 def main():
     global current_lang
     cfg = load_config()
-    if "lang" in cfg:
+    if "lang" in cfg and cfg["lang"] in LANG:
         current_lang = cfg["lang"]
 
     fd = sys.stdin.fileno()
@@ -369,12 +378,12 @@ def main():
         Banner()
         l = LANG[current_lang]
         print(f"\033[1;32m{l['menu_title']}\033[0m")
-        print(f" \033[1;36m{l['m1']}\033[0m") # Dòng Y = 13
-        print(f" \033[1;36m{l['m2']}\033[0m") # Dòng Y = 14
-        print(f" \033[1;36m{l['m3']}\033[0m") # Dòng Y = 15
-        print(f" \033[1;36m{l['m4']}\033[0m") # Dòng Y = 16
-        print(f" \033[1;36m{l['m5']}\033[0m") # Dòng Y = 17
-        print(f" \033[1;31m{l['m0']}\033[0m") # Dòng Y = 18
+        print(f" \033[1;36m{l['m1']}\033[0m")
+        print(f" \033[1;36m{l['m2']}\033[0m")
+        print(f" \033[1;36m{l['m3']}\033[0m")
+        print(f" \033[1;36m{l['m4']}\033[0m")
+        print(f" \033[1;36m{l['m5']}\033[0m")
+        print(f" \033[1;31m{l['m0']}\033[0m")
         print("=======================================================")
         print(f"\033[1;33m{l['choice']}\033[0m\n")
 
