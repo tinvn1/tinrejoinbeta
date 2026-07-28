@@ -6,6 +6,7 @@ import sys
 import select
 import tty
 import termios
+import re
 
 CONFIG_FILE = "config_rejoin.json"
 FALLBACK_CONFIG_FILE = "/sdcard/Download/config_rejoin.json"
@@ -21,7 +22,7 @@ LANG = {
         },
         "menu_title": "[ MENU CẤU HÌNH TỰ ĐỘNG ]",
         "m1": "[1] Khởi động Tool Rejoin",
-        "m2": "[2] Cài đặt Server & Account (User ID, Place ID, VIP)",
+        "m2": "[2] Cài đặt Server & Account (Auto/Manual)",
         "m3": "[3] Cài đặt Thời Gian (Check Interval & Force Rejoin)",
         "m4": "[4] Ngôn ngữ / Language",
         "m5": "[5] Xóa cấu hình hiện tại",
@@ -44,7 +45,7 @@ LANG = {
         },
         "menu_title": "[ AUTOMATION MENU CONFIG ]",
         "m1": "[1] Start Rejoin Tool",
-        "m2": "[2] Setup Server & Account (User ID, Place ID, VIP)",
+        "m2": "[2] Setup Server & Account (Auto/Manual)",
         "m3": "[3] Setup Timer Options (Check & Force Rejoin Interval)",
         "m4": "[4] Language Settings",
         "m5": "[5] Delete Current Config",
@@ -105,7 +106,7 @@ def Banner():
     print("    ██║   ██║██║ ╚████║██║  ██║╚██████╔╝██████╔╝")
     print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝ ╚═════╝ ╚═════╝ ")
     print("\033[1;32m=======================================================\033[0m")
-    print("\033[1;37m        🚀 TINHUB REJOIN SYSTEM AUTOMATION v4.2 🚀\033[0m")
+    print("\033[1;37m        🚀 TINHUB REJOIN SYSTEM AUTOMATION v4.3 🚀\033[0m")
     print("\033[1;32m=======================================================\033[0m\n")
 
 def read_input_event():
@@ -137,19 +138,67 @@ def print_status_box(user_id, status_text, next_rejoin_s, is_paused=False):
     print(f"\033[1;34m│\033[0m  ⏳ Rejoin In: \033[1;35m{str(next_rejoin_s) + 's':<35}\033[0m \033[1;34m│\033[0m")
     print("\033[1;34m└─────────────────────────────────────────────────────┘\033[0m")
 
+# --- HÀM HỖ TRỢ TỰ ĐỘNG BỔ SUNG ---
+def get_user_id_from_username(username):
+    url = "https://users.roblox.com/v1/usernames/users"
+    payload = {"usernames": [username], "excludeBannedUsers": True}
+    try:
+        res = requests.post(url, json=payload, timeout=5)
+        if res.status_code == 200:
+            data = res.json().get("data", [])
+            if data:
+                return data[0].get("id")
+    except Exception:
+        pass
+    return None
+
+def extract_place_id_from_vip(vip_link):
+    # Regex tìm chuỗi số nằm sau /games/ hoặc games/
+    match = re.search(r'/games/(\d+)', vip_link)
+    if match:
+        return match.group(1)
+    return None
+
+# --- SETUP CẤU HÌNH SERVER & ACCOUNT THÔNG MINH ---
 def setup_server_config():
     disable_mouse()
     Banner()
-    print("\033[1;33m[🌐] SETUP SERVER & ACCOUNT / CÀI ĐẶT SERVER & ACC\033[0m\n")
-    try:
-        user_id = int(input("\033[1;32m[1] Roblox User ID:\033[0m ").strip())
-        place_id = input("\033[1;32m[2] Game Place ID:\033[0m ").strip()
-        vip_link = input("\033[1;32m[3] VIP Server Link (Nhấn ENTER để bỏ qua):\033[0m ").strip()
-    except ValueError:
-        print("\n\033[1;31m[❌] Input Error / Lỗi nhập liệu!\033[0m")
-        time.sleep(2)
-        enable_mouse()
-        return None
+    print("\033[1;33m[🌐] SETUP SERVER & ACCOUNT (TỰ ĐỘNG / THỦ CÔNG)\033[0m\n")
+    
+    # 1. Nhập Username hoặc User ID
+    user_input = input("\033[1;32m[1] Nhập Username HOẶC Roblox User ID:\033[0m ").strip()
+    user_id = None
+    
+    if user_input.isdigit():
+        user_id = int(user_input)
+    else:
+        print("\033[1;33m[🔍] Đang tìm User ID từ Username...\033[0m")
+        user_id = get_user_id_from_username(user_input)
+        if user_id:
+            print(f"\033[1;32m[✔] Đã tìm thấy User ID: {user_id}\033[0m")
+        else:
+            print("\033[1;31m[❌] Không tìm thấy User ID cho Username này!\033[0m")
+            time.sleep(2)
+            enable_mouse()
+            return None
+
+    # 2. Nhập VIP Link trước
+    vip_link = input("\n\033[1;32m[2] Dán Link Server VIP (Ấn ENTER nếu không dùng VIP):\033[0m ").strip()
+    place_id = None
+
+    if vip_link and vip_link.startswith("http"):
+        place_id = extract_place_id_from_vip(vip_link)
+        if place_id:
+            print(f"\033[1;32m[✔] Đã tự động tách Game Place ID từ Link VIP: {place_id}\033[0m")
+    
+    # 3. Nếu không tách được từ VIP link hoặc không dùng VIP, yêu cầu nhập Place ID
+    if not place_id:
+        place_id = input("\033[1;32m[3] Nhập Game Place ID:\033[0m ").strip()
+        if not place_id:
+            print("\n\033[1;31m[❌] Place ID không được để trống!\033[0m")
+            time.sleep(2)
+            enable_mouse()
+            return None
 
     config = load_config()
     config.update({
@@ -255,18 +304,18 @@ def run_tool(config):
                         kind = evt[0]
                         if kind == "TOUCH":
                             y = evt[2]
-                            if 16 <= y <= 18:  # Nút 1: Tiếp tục
+                            if 16 <= y <= 18:
                                 is_paused = False
                                 break
-                            elif 18 < y <= 20: # Nút 2: Dừng hẳn về Menu
+                            elif 18 < y <= 20:
                                 print("\n\033[1;31m[🛑] QUAY VỀ MENU CHÍNH!\033[0m")
                                 time.sleep(1)
                                 return
                         elif kind == "KEY":
-                            if evt[1] in ['1', ' ']: # Phím 1 hoặc Space để tiếp tục
+                            if evt[1] in ['1', ' ']:
                                 is_paused = False
                                 break
-                            elif evt[1] in ['2', 's', 'S']: # Phím 2 hoặc S để về Menu
+                            elif evt[1] in ['2', 's', 'S']:
                                 return
                     time.sleep(0.2)
                 continue
@@ -294,18 +343,18 @@ def run_tool(config):
                         kind = evt[0]
                         if kind == "TOUCH":
                             y = evt[2]
-                            if 16 <= y <= 18:  # Chạm nút 1: Tạm dừng
+                            if 16 <= y <= 18:
                                 is_paused = True
                                 break
-                            elif 18 < y <= 20: # Chạm nút 2: Dừng / Về Menu
+                            elif 18 < y <= 20:
                                 print("\n\033[1;31m[🛑] QUAY VỀ MENU CHÍNH!\033[0m")
                                 time.sleep(1)
                                 return
                         elif kind == "KEY":
-                            if evt[1] in ['1', ' ']: # Bấm 1 hoặc Space: Tạm dừng
+                            if evt[1] in ['1', ' ']:
                                 is_paused = True
                                 break
-                            elif evt[1] in ['2', 's', 'S']: # Bấm 2 hoặc S: Về Menu
+                            elif evt[1] in ['2', 's', 'S']:
                                 return
                     time.sleep(0.2)
 
