@@ -53,6 +53,11 @@ LANG = {
 
 current_lang = "VNI"
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Content-Type": "application/json"
+}
+
 def get_active_config_path():
     if os.path.exists(CONFIG_FILE):
         return CONFIG_FILE
@@ -104,16 +109,17 @@ def print_status_box(user_id, status_text, next_rejoin_s, check_in, force_in):
 
 def get_user_id_from_username(username):
     url = "https://users.roblox.com/v1/usernames/users"
-    payload = {"usernames": [username], "excludeBannedUsers": True}
+    payload = {"usernames": [username], "excludeBannedUsers": False}
     try:
-        res = requests.post(url, json=payload, timeout=5)
+        res = requests.post(url, json=payload, headers=HEADERS, timeout=8)
         if res.status_code == 200:
             data = res.json().get("data", [])
-            if data:
-                return data[0].get("id")
-    except Exception:
+            if data and len(data) > 0:
+                user_info = data[0]
+                return user_info.get("id"), user_info.get("displayName")
+    except Exception as e:
         pass
-    return None
+    return None, None
 
 def extract_place_id_from_vip(vip_link):
     match = re.search(r'/games/(\d+)', vip_link)
@@ -130,14 +136,16 @@ def setup_server_config():
     
     if user_input.isdigit():
         user_id = int(user_input)
+        print(f"\033[1;32m[✔] Đã nhận Roblox User ID: {user_id}\033[0m")
     else:
-        print("\033[1;33m[🔍] Đang tìm User ID từ Username...\033[0m")
-        user_id = get_user_id_from_username(user_input)
+        print("\033[1;33m[🔍] Đang tìm User ID từ Roblox API...\033[0m")
+        user_id, display_name = get_user_id_from_username(user_input)
         if user_id:
-            print(f"\033[1;32m[✔] Đã tìm thấy User ID: {user_id}\033[0m")
+            print(f"\033[1;32m[✔] Đã tìm thấy Acc: {display_name} (@{user_input})\033[0m")
+            print(f"\033[1;32m[✔] User ID: {user_id}\033[0m")
         else:
-            print("\033[1;31m[❌] Không tìm thấy User ID cho Username này!\033[0m")
-            time.sleep(2)
+            print("\033[1;31m[❌] Không tìm thấy Username này trên Roblox! Kiểm tra lại chính tả.\033[0m")
+            time.sleep(2.5)
             return None
 
     vip_link = input("\n\033[1;32m[2] Dán Link Server VIP (Ấn ENTER nếu không dùng VIP):\033[0m ").strip()
@@ -190,10 +198,9 @@ def setup_timer_config():
 
 def check_roblox_presence(user_id):
     url = "https://presence.roblox.com/v1/presence/users"
-    headers = {"Content-Type": "application/json"}
     payload = {"userIds": [user_id]}
     try:
-        res = requests.post(url, json=payload, headers=headers, timeout=10)
+        res = requests.post(url, json=payload, headers=HEADERS, timeout=10)
         if res.status_code == 200:
             data = res.json()
             if data and "userPresences" in data and len(data["userPresences"]) > 0:
@@ -206,7 +213,6 @@ def kill_and_launch_roblox(place_id, vip_url):
     print("\n\033[1;31m[💥] KILLING ROBLOX APP...\033[0m")
     pkg = "com.roblox.client"
     
-    # Tắt triệt để Roblox bằng Root & Non-Root
     os.system(f"su -c 'am force-stop {pkg} >/dev/null 2>&1'")
     os.system(f"su -c 'pkill -f {pkg} >/dev/null 2>&1'")
     os.system(f"am force-stop {pkg} >/dev/null 2>&1")
@@ -231,7 +237,6 @@ def run_tool(config):
         time.sleep(2.5)
         return
 
-    # Ép kiểu dữ liệu thời gian từ Config
     try:
         check_interval = int(config.get("check_interval", 15))
     except (ValueError, TypeError):
@@ -256,7 +261,6 @@ def run_tool(config):
             elapsed_time = time.time() - start_time
             time_left = max(0, int(force_timeout - elapsed_time))
 
-            # Trường hợp 1: Hết thời gian Ép Rejoin định kỳ
             if elapsed_time >= force_timeout:
                 print(f"\n\033[1;33m[🔥] {l['force_rejoin']}\033[0m")
                 kill_and_launch_roblox(PLACE_ID, VIP_LINK)
@@ -265,7 +269,6 @@ def run_tool(config):
                 time.sleep(30)
                 continue
 
-            # Trường hợp 2: Kiểm tra Status tài khoản
             status = check_roblox_presence(USER_ID)
             status_text = l["status_map"].get(status, "UNKNOWN")
             
