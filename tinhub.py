@@ -92,13 +92,14 @@ def Banner():
     print("\033[1;37m        🚀 TINHUB REJOIN SYSTEM AUTOMATION v4.3 🚀\033[0m")
     print("\033[1;32m=======================================================\033[0m\n")
 
-def print_status_box(user_id, status_text, next_rejoin_s):
+def print_status_box(user_id, status_text, next_rejoin_s, check_in, force_in):
     l = LANG[current_lang]
     print("\033[1;34m┌─────────────────────────────────────────────────────┐\033[0m")
     print(f"\033[1;34m│\033[0m  \033[1;33m📌 {l['status_title']}\033[0m                                 \033[1;34m│\033[0m")
-    print(f"\033[1;34m│\033[0m  👤 User ID : \033[1;36m{str(user_id):<36}\033[0m \033[1;34m│\033[0m")
-    print(f"\033[1;34m│\033[0m  📊 State   : \033[1;32m{status_text:<36}\033[0m \033[1;34m│\033[0m")
-    print(f"\033[1;34m│\033[0m  ⏳ Rejoin In: \033[1;35m{str(next_rejoin_s) + 's':<35}\033[0m \033[1;34m│\033[0m")
+    print(f"\033[1;34m│\033[0m  👤 User ID   : \033[1;36m{str(user_id):<34}\033[0m \033[1;34m│\033[0m")
+    print(f"\033[1;34m│\033[0m  📊 State     : \033[1;32m{status_text:<34}\033[0m \033[1;34m│\033[0m")
+    print(f"\033[1;34m│\033[0m  ⏱️ Config    : \033[1;33mCheck {check_in}s | Force {force_in}p\033[0m          \033[1;34m│\033[0m")
+    print(f"\033[1;34m│\033[0m  ⏳ Rejoin In : \033[1;35m{str(next_rejoin_s) + 's':<34}\033[0m \033[1;34m│\033[0m")
     print("\033[1;34m└─────────────────────────────────────────────────────┘\033[0m")
 
 def get_user_id_from_username(username):
@@ -124,7 +125,6 @@ def setup_server_config():
     Banner()
     print("\033[1;33m[🌐] SETUP SERVER & ACCOUNT (TỰ ĐỘNG / THỦ CÔNG)\033[0m\n")
     
-    # 1. Nhập Username hoặc User ID
     user_input = input("\033[1;32m[1] Nhập Username HOẶC Roblox User ID:\033[0m ").strip()
     user_id = None
     
@@ -140,7 +140,6 @@ def setup_server_config():
             time.sleep(2)
             return None
 
-    # 2. Nhập VIP Link
     vip_link = input("\n\033[1;32m[2] Dán Link Server VIP (Ấn ENTER nếu không dùng VIP):\033[0m ").strip()
     place_id = None
 
@@ -149,7 +148,6 @@ def setup_server_config():
         if place_id:
             print(f"\033[1;32m[✔] Đã tự động tách Game Place ID từ Link VIP: {place_id}\033[0m")
     
-    # 3. Nhập Place ID nếu không dùng VIP
     if not place_id:
         place_id = input("\033[1;32m[3] Nhập Game Place ID:\033[0m ").strip()
         if not place_id:
@@ -206,10 +204,20 @@ def check_roblox_presence(user_id):
 
 def kill_and_launch_roblox(place_id, vip_url):
     print("\n\033[1;31m[💥] KILLING ROBLOX APP...\033[0m")
-    os.system("su -c 'am force-stop com.roblox.client' 2>/dev/null || am force-stop com.roblox.client")
+    pkg = "com.roblox.client"
+    
+    # Tắt triệt để Roblox bằng Root & Non-Root
+    os.system(f"su -c 'am force-stop {pkg} >/dev/null 2>&1'")
+    os.system(f"su -c 'pkill -f {pkg} >/dev/null 2>&1'")
+    os.system(f"am force-stop {pkg} >/dev/null 2>&1")
+    
     time.sleep(2)
+    
     intent_url = vip_url if (vip_url and vip_url.startswith("http")) else f"roblox://placeId={place_id}"
-    os.system(f"su -c \"am start -a android.intent.action.VIEW -d '{intent_url}' com.roblox.client\" 2>/dev/null || am start -a android.intent.action.VIEW -d '{intent_url}'")
+    
+    print("\033[1;32m[🚀] RE-LAUNCHING ROBLOX...\033[0m")
+    os.system(f"su -c 'am start -a android.intent.action.VIEW -d \"{intent_url}\" {pkg} >/dev/null 2>&1'")
+    os.system(f"am start -a android.intent.action.VIEW -d \"{intent_url}\" {pkg} >/dev/null 2>&1")
 
 def run_tool(config):
     global current_lang
@@ -223,8 +231,16 @@ def run_tool(config):
         time.sleep(2.5)
         return
 
-    check_interval = config.get("check_interval", 15)
-    force_interval = config.get("force_interval", 60)
+    # Ép kiểu dữ liệu thời gian từ Config
+    try:
+        check_interval = int(config.get("check_interval", 15))
+    except (ValueError, TypeError):
+        check_interval = 15
+
+    try:
+        force_interval = int(config.get("force_interval", 60))
+    except (ValueError, TypeError):
+        force_interval = 60
 
     force_timeout = force_interval * 60
     start_time = time.time()
@@ -240,22 +256,26 @@ def run_tool(config):
             elapsed_time = time.time() - start_time
             time_left = max(0, int(force_timeout - elapsed_time))
 
+            # Trường hợp 1: Hết thời gian Ép Rejoin định kỳ
             if elapsed_time >= force_timeout:
                 print(f"\n\033[1;33m[🔥] {l['force_rejoin']}\033[0m")
                 kill_and_launch_roblox(PLACE_ID, VIP_LINK)
                 start_time = time.time()
-                time.sleep(45)
+                print("\033[1;36m[⏳] Đang chờ game tải vào lại (30s)...\033[0m")
+                time.sleep(30)
                 continue
 
+            # Trường hợp 2: Kiểm tra Status tài khoản
             status = check_roblox_presence(USER_ID)
             status_text = l["status_map"].get(status, "UNKNOWN")
             
-            print_status_box(USER_ID, status_text, time_left)
+            print_status_box(USER_ID, status_text, time_left, check_interval, force_interval)
 
             if status != 2:
                 print(f"\n\033[1;31m[⚠️] {l['offline_warn']}\033[0m")
                 kill_and_launch_roblox(PLACE_ID, VIP_LINK)
-                time.sleep(45)
+                print("\033[1;36m[⏳] Đang chờ game tải vào lại (30s)...\033[0m")
+                time.sleep(30)
             else:
                 time.sleep(check_interval)
 
