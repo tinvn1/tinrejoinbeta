@@ -87,14 +87,14 @@ def save_config(config_data):
 def Banner():
     os.system("clear")
     print("\033[1;36m")
-    print(" ████████╗██╗███╗   ██╗██╗  ██╗██╗   ██╗██████╗ ")
-    print(" ╚══██╔══╝██║████╗  ██║██║  ██║██║   ██║██╔══██╗")
+    print(" ████████╗██╗███╗    ██╗██╗   ██╗██╗   ██╗██████╗ ")
+    print(" ╚══██╔══╝██║████╗   ██║██║   ██║██║   ██║██╔══██╗")
     print("    ██║   ██║██╔██╗ ██║███████║██║   ██║██████╔╝")
     print("    ██║   ██║██║╚██╗██║██╔══██║██║   ██║██╔══██╗")
-    print("    ██║   ██║██║ ╚████║██║  ██║╚██████╔╝██████╔╝")
-    print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝ ╚═════╝ ╚═════╝ ")
+    print("    ██║   ██║██║ ╚████║██║   ██║╚██████╔╝██████╔╝")
+    print("    ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝   ╚═══╝ ╚═════╝ ╚═════╝ ")
     print("\033[1;32m=======================================================\033[0m")
-    print("\033[1;37m        🚀 TINHUB REJOIN SYSTEM AUTOMATION v4.3 🚀\033[0m")
+    print("\033[1;37m        🚀 TINHUB REJOIN SYSTEM AUTOMATION v4.4 🚀\033[0m")
     print("\033[1;32m=======================================================\033[0m\n")
 
 def print_status_box(user_id, status_text, next_rejoin_s, check_in, force_in):
@@ -117,7 +117,7 @@ def get_user_id_from_username(username):
             if data and len(data) > 0:
                 user_info = data[0]
                 return user_info.get("id"), user_info.get("displayName")
-    except Exception as e:
+    except Exception:
         pass
     return None, None
 
@@ -127,10 +127,43 @@ def extract_place_id_from_vip(vip_link):
         return match.group(1)
     return None
 
+def search_game_by_name(game_keyword):
+    """
+    Tìm kiếm game theo từ khóa và trả về Place ID của kết quả chọn.
+    """
+    url = f"https://games.roblox.com/v1/games/list?model.keyword={requests.utils.quote(game_keyword)}"
+    try:
+        res = requests.get(url, headers=HEADERS, timeout=10)
+        if res.status_code == 200:
+            games = res.json().get("games", [])
+            if not games:
+                print("\033[1;31m[❌] Không tìm thấy game nào khớp với từ khóa!\033[0m")
+                return None
+            
+            print("\n\033[1;36m[🔎] KẾT QUẢ TÌM KIẾM GAME:\033[0m")
+            top_games = games[:5]  # Lấy tối đa 5 kết quả đầu
+            for idx, g in enumerate(top_games, 1):
+                name = g.get("name", "Unknown")
+                place_id = g.get("placeId", "N/A")
+                builder = g.get("builder", "Unknown")
+                print(f" \033[1;33m[{idx}]\033[0m \033[1;37m{name}\033[0m | Place ID: \033[1;32m{place_id}\033[0m (Tác giả: {builder})")
+            
+            print(" \033[1;31m[0] Bỏ qua / Nhập bằng phương thức khác\033[0m")
+            sel = input("\n👉 Chọn số tương ứng với Game của bạn: ").strip()
+            
+            if sel.isdigit() and 1 <= int(sel) <= len(top_games):
+                selected_place_id = str(top_games[int(sel) - 1].get("placeId"))
+                print(f"\033[1;32m[✔] Đã lựa chọn Game ID: {selected_place_id}\033[0m")
+                return selected_place_id
+    except Exception as e:
+        print(f"\033[1;31m[❌] Lỗi khi tra cứu Roblox Game API: {e}\033[0m")
+    return None
+
 def setup_server_config():
     Banner()
     print("\033[1;33m[🌐] SETUP SERVER & ACCOUNT (TỰ ĐỘNG / THỦ CÔNG)\033[0m\n")
     
+    # 1. Nhập User Info
     user_input = input("\033[1;32m[1] Nhập Username HOẶC Roblox User ID:\033[0m ").strip()
     user_id = None
     
@@ -148,6 +181,7 @@ def setup_server_config():
             time.sleep(2.5)
             return None
 
+    # 2. Xử lý Link VIP nếu có
     vip_link = input("\n\033[1;32m[2] Dán Link Server VIP (Ấn ENTER nếu không dùng VIP):\033[0m ").strip()
     place_id = None
 
@@ -155,9 +189,23 @@ def setup_server_config():
         place_id = extract_place_id_from_vip(vip_link)
         if place_id:
             print(f"\033[1;32m[✔] Đã tự động tách Game Place ID từ Link VIP: {place_id}\033[0m")
-    
+
+    # 3. Tìm kiếm Game Name hoặc Nhập Place ID Thủ Công (nếu chưa có từ Link VIP)
     if not place_id:
-        place_id = input("\033[1;32m[3] Nhập Game Place ID:\033[0m ").strip()
+        print("\n\033[1;36m[3] CẤU HÌNH GAME PLACE ID:\033[0m")
+        print(" \033[1;33m[A]\033[0m Tìm kiếm theo Tên Game")
+        print(" \033[1;33m[B]\033[0m Nhập Place ID trực tiếp")
+        method = input("👉 Lựa chọn phương thức (A/B, mặc định A): ").strip().upper() or "A"
+        
+        if method == "A":
+            game_kw = input("\n👉 Nhập tên Game muốn tìm (VD: Art to Destroy, Blox Fruits...): ").strip()
+            if game_kw:
+                place_id = search_game_by_name(game_kw)
+        
+        # Nếu phương thức B hoặc tìm kiếm A không chọn được ID
+        if not place_id:
+            place_id = input("\n\033[1;32m👉 Nhập Game Place ID thủ công:\033[0m ").strip()
+            
         if not place_id:
             print("\n\033[1;31m[❌] Place ID không được để trống!\033[0m")
             time.sleep(2)
