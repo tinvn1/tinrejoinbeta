@@ -129,9 +129,22 @@ def get_user_id_from_username(username):
     return None, None
 
 def extract_place_id_from_vip(vip_link):
+    # Trích xuất dạng URL cũ: /games/123456/
     match = re.search(r'/games/(\d+)', vip_link)
     if match:
         return match.group(1)
+    
+    # Giải mã dạng Share Link mới: roblox.com/share?code=...
+    if "roblox.com/share" in vip_link:
+        try:
+            print("\033[1;33m  [🔍] Đang truy vấn giải mã Link Share VIP...\033[0m")
+            res = requests.get(vip_link, headers=HEADERS, allow_redirects=True, timeout=8)
+            match = re.search(r'/games/(\d+)', res.url)
+            if match:
+                return match.group(1)
+        except Exception as e:
+            print(f"\033[1;31m  [⚠️] Lỗi giải mã Link VIP: {e}\033[0m")
+            
     return None
 
 def search_game_by_name(game_keyword):
@@ -167,6 +180,7 @@ def setup_server_config():
     print("\033[1;33m  ⚙️  CÀI ĐẶT SERVER & TÀI KHOẢN\033[0m")
     print("\033[1;30m  ─────────────────────────────────────────────────────────\033[0m\n")
     
+    # 1. Nhập User Info
     user_input = input("  [1] Nhập Username HOẶC Roblox User ID: ").strip()
     user_id = None
     
@@ -183,14 +197,18 @@ def setup_server_config():
             time.sleep(2)
             return None
 
+    # 2. Xử lý Link VIP
     vip_link = input("\n  [2] Dán Link Server VIP (Ấn ENTER để bỏ qua): ").strip()
     place_id = None
 
     if vip_link and vip_link.startswith("http"):
         place_id = extract_place_id_from_vip(vip_link)
         if place_id:
-            print(f"\033[1;32m  [✔] Đã trích xuất Place ID từ Link VIP: {place_id}\033[0m")
+            print(f"\033[1;32m  [✔] Đã tự động trích xuất Place ID từ Link VIP: {place_id}\033[0m")
+        else:
+            print("\033[1;33m  [⚠️] Không thể tự bóc tách ID từ Link này. Vui lòng chọn [3]!\033[0m")
 
+    # 3. Tìm kiếm/nhập Place ID nếu Link VIP chưa tách được ID
     if not place_id:
         print("\n  [3] TÙY CHỌN CẤU HÌNH PLACE ID:")
         print("      \033[1;36m[A]\033[0m Tìm kiếm theo Tên Game")
